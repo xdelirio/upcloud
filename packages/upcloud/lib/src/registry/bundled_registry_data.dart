@@ -27,6 +27,7 @@ const bundledRegistryJson = r'''
       "driver": "xvs",
       "description": "Video hosting formerly known as VidHide.",
       "website": "https://earnvids.com",
+      "iconUrl": "https://earnvids.site/static/images/favicon/apple-touch-icon.png",
       "apiBase": "https://earnvidsapi.com/api",
       "mirrors": ["https://vidhideapi.com/api"],
       "disabledCapabilities": ["deleteFile", "deleteFolder"],

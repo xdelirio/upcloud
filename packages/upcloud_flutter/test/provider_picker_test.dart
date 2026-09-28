@@ -110,4 +110,55 @@ void main() {
     expect(find.text('+1'), findsOneWidget);
     expect(find.byIcon(Icons.search_rounded), findsOneWidget);
   });
+
+  group('ProviderAvatar', () {
+    test('detects SVG URLs', () {
+      expect(
+        ProviderAvatar.isSvgUrl(Uri.parse('https://x.test/logo.SVG?v=2')),
+        isTrue,
+      );
+      expect(
+        ProviderAvatar.isSvgUrl(Uri.parse('data:image/svg+xml;base64,AAAA')),
+        isTrue,
+      );
+      expect(
+        ProviderAvatar.isSvgUrl(Uri.parse('https://x.test/favicon.ico')),
+        isFalse,
+      );
+    });
+
+    testWidgets('SVG logos fall back to the initial until they load', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        ProviderAvatar(
+          info: ProviderInfo(
+            id: 'x',
+            name: 'Example',
+            iconUrl: Uri.parse('https://x.test/logo.svg'),
+          ),
+        ),
+      );
+      // While loading (and when the URL is not a valid SVG, as in tests
+      // where HTTP fails) the initial is shown instead of an error.
+      await tester.pumpAndSettle();
+      expect(find.text('E'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('renders raster icons with Image', (tester) async {
+      await pumpApp(
+        tester,
+        ProviderAvatar(
+          info: ProviderInfo(
+            id: 'x',
+            name: 'Example',
+            iconUrl: Uri.parse('https://x.test/favicon.png'),
+          ),
+        ),
+      );
+      expect(find.byType(Image), findsOneWidget);
+    });
+  });
 }

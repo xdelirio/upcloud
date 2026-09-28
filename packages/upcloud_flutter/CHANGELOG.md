@@ -37,7 +37,7 @@ Unpublished.
   selected provider on one screen (or a fixed `provider`).
 * `AccountList` with connection status and a storage usage bar.
 * Compact `ProviderPicker` (icon and name; `showDetails` for more) and
-  `CapabilityChips`.
+  `CapabilityChips`. `ProviderAvatar` shows PNG/ICO and SVG provider icons.
 * `ProviderList`, `ProviderEditor` and `showProviderEditor` to manage the
   provider registry.
 * `CloudBrowserController`, `TransfersController` (with batch actions and

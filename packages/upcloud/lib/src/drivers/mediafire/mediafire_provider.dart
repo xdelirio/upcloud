@@ -53,11 +53,7 @@ abstract final class MediaFireCredentials {
 
   /// Fields of the MediaFire login form: email and password.
   static const CredentialSchema schema = CredentialSchema([
-    CredentialField(
-      id: email,
-      label: 'Email',
-      kind: CredentialInputKind.email,
-    ),
+    CredentialField(id: email, label: 'Email', kind: CredentialInputKind.email),
     CredentialField(
       id: password,
       label: 'Password',
