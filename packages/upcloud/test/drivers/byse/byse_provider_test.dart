@@ -646,6 +646,104 @@ void main() {
     });
   });
 
+  group('file links', () {
+    Map<String, Object?> fileList(List<Map<String, Object?>> files) => {
+      'status': 200,
+      'msg': 'OK',
+      'result': {'files': files, 'results_total': files.length, 'pages': 1},
+    };
+
+    void serveFiles(ByseHarness harness) => harness.onGet(
+      'file/list',
+      fileList([
+        {'file_code': 'fromapi', 'title': 'A', 'link': 'https://api.link/a'},
+        {'file_code': 'no link', 'title': 'B'},
+      ]),
+      query: {'title': 'x'},
+    );
+
+    Future<List<Uri?>> links(ByseHarness harness) async {
+      final page = await harness.provider.searchFiles('x');
+      return [for (final file in page.items) file.pageUrl];
+    }
+
+    test('the link of the API wins over the template of the entry', () async {
+      final harness = ByseHarness(
+        definition: byseDriver.definitionFor(
+          byse.config!.copyWith(fileUrlTemplate: 'https://mirror.test/w/{id}'),
+        ),
+      );
+      serveFiles(harness);
+
+      expect(await links(harness), [
+        Uri.parse('https://api.link/a'),
+        Uri.parse('https://mirror.test/w/no%20link'),
+      ]);
+    });
+
+    test('entries without a template use the watch page of the website', () {
+      final definition = byseDriver.definitionFor(
+        ProviderConfig(
+          id: 'byse-alt',
+          name: 'Byse Alt',
+          driver: ByseDriver.driverId,
+          website: Uri.parse('https://byse.example/'),
+        ),
+      );
+
+      expect(definition.fileUrlTemplate, 'https://byse.example/d/{id}');
+      expect(byse.fileUrlTemplate, 'https://byse.sx/d/{id}');
+      expect(byseFileUrlTemplate(), 'https://byse.sx/d/{id}');
+      expect(
+        byseFileUrlTemplate(Uri.parse('https://byse.example:8443/app/')),
+        'https://byse.example:8443/app/d/{id}',
+      );
+    });
+
+    test('providers created without a template use the default', () async {
+      // A definition built by hand, not by the driver: no template.
+      final definition = ProviderDefinition(
+        info: ProviderInfo(
+          id: 'byse-code',
+          name: 'Byse (code)',
+          website: Uri.parse('https://byse.example'),
+        ),
+        credentialSchema: CredentialSchema.apiKey(),
+        capabilities: byseCapabilities,
+        factory: (definition, credentials, options) =>
+            throw UnimplementedError(),
+      );
+      final harness = ByseHarness(definition: definition);
+      serveFiles(harness);
+
+      expect(await links(harness), [
+        Uri.parse('https://api.link/a'),
+        Uri.parse('https://byse.example/d/no%20link'),
+      ]);
+    });
+
+    test('completeUpload builds the link with the template', () async {
+      final harness = ByseHarness(
+        definition: byseDriver.definitionFor(
+          byse.config!.copyWith(fileUrlTemplate: 'https://mirror.test/w/{id}'),
+        ),
+      )..onGet('upload/server', byseFixture('upload_server.json'));
+      final request = await harness.provider.prepareUpload(
+        const UploadFileInfo(name: 'clip.mp4', size: 4096),
+      );
+
+      final file = await harness.provider.completeUpload(
+        request,
+        UploadResponse(
+          statusCode: 200,
+          body: jsonEncode(byseFixture('upload_file.json')),
+        ),
+      );
+
+      expect(file.pageUrl, Uri.parse('https://mirror.test/w/tnklyibwwpsh'));
+    });
+  });
+
   group('errors', () {
     Future<void> expectError(Object? body, Matcher matcher, {int code = 200}) {
       h.onGet('account/info', body, statusCode: code);

@@ -24,8 +24,8 @@ registry/providers.json ──► ProviderRegistry ──► ProviderDefinition 
 - **Providers** are entries of [`registry/providers.json`](registry/providers.json).
   Apps download it, so a domain change or a new host does not need a
   package release.
-- Users can edit providers (domains, mirrors, limits) and add their own,
-  based on any available driver.
+- Users can edit providers (domains, mirrors, file links, limits) and add
+  their own, based on any available driver.
 
 ## Repository layout
 

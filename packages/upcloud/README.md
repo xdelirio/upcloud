@@ -21,7 +21,8 @@ video hosting providers.
 - **Upload settings** (concurrency, retries, default folder and
   visibility...) applied at runtime and persisted.
 - **Share links**: uploaded and listed files carry their public link in
-  `CloudFile.pageUrl`.
+  `CloudFile.pageUrl`, from the API or from the `fileUrlTemplate` of the
+  registry entry.
 - **Encrypted backups** of accounts, provider edits and settings
   (Argon2id + AES-256-GCM), to move them to another device.
 - Pure Dart. Flutter widgets live in
@@ -274,8 +275,8 @@ Providers are described in [`registry/providers.json`](../../registry/providers.
   "website": "https://streamhg.com",
   "apiBase": "https://streamhgapi.com/api",
   "mirrors": ["https://streamhg-mirror.example/api"],
-  "limits": { "maxFileSizeMb": 2048, "allowedExtensions": ["mp4", "mkv"] },
-  "settings": { "pageUrlTemplate": "https://streamhg.com/{code}.html" }
+  "fileUrlTemplate": "https://hgcloud.to/{id}",
+  "limits": { "maxFileSizeMb": 2048, "allowedExtensions": ["mp4", "mkv"] }
 }
 ```
 
@@ -290,6 +291,31 @@ Providers are described in [`registry/providers.json`](../../registry/providers.
 
 Entries whose driver is unknown to the installed package version are
 skipped and reported in `registry.issues`, so older apps keep working.
+
+### File links
+
+`fileUrlTemplate` is the public link of a file, with `{id}` where the
+file id of the provider goes (the file code for `xvs` and `byse`, the
+quickkey for `mediafire`). Drivers fill `CloudFile.pageUrl` with, in
+order:
+
+1. The link returned by the API, when there is one (the most current).
+2. The `fileUrlTemplate` of the entry.
+3. The default of the driver, if it has one (see [Drivers](#drivers));
+   otherwise the file has no link.
+
+```dart
+final definition = upcloud.registry.definition('streamhg')!;
+definition.fileUrl('a b'); // https://hgcloud.to/a%20b (id URL-encoded)
+definition.config?.fileUrl('abc'); // Only the template of the entry.
+ProviderConfig.expandFileUrl('https://myhost.example/{id}.html', 'abc');
+```
+
+`ProviderDefinition.fileUrlTemplate` holds the template of the entry or
+the default of the driver (`CloudDriver.defaultFileUrlTemplate`).
+Templates must be `https` URLs that contain `{id}`; other values are
+reported as `ConfigProblem`s (`ConfigProblemCode.missingIdPlaceholder`,
+`insecureUrl`, `invalidUrl`).
 
 ### Persisting data
 
@@ -365,9 +391,7 @@ await upcloud.registry.save(
     driver: 'xvs',
     website: Uri.parse('https://myhost.example'),
     apiBase: Uri.parse('https://myhost.example/api'),
-    settings: const {
-      'pageUrlTemplate': 'https://myhost.example/{code}.html',
-    },
+    fileUrlTemplate: 'https://myhost.example/{id}.html',
   ),
 );
 ```
@@ -470,11 +494,15 @@ the default in apps.
 
 ## Drivers
 
-| Driver | API | Settings |
-| --- | --- | --- |
-| `xvs` | [XVideoSharing](https://xvideosharing.com/api.html) script | `pageUrlTemplate` (when the API does not return file links) |
-| `byse` | [Byse](https://byse.sx/api-docs) | – |
-| `mediafire` | [MediaFire Core API 1.5](https://www.mediafire.com/developers/core_api/1.5/getting_started/) | – |
+| Driver | API | File `{id}` | Default `fileUrlTemplate` |
+| --- | --- | --- | --- |
+| `xvs` | [XVideoSharing](https://xvideosharing.com/api.html) script | File code | – (only the links of the API) |
+| `byse` | [Byse](https://byse.sx/api-docs) | File code | `{website}/d/{id}` (`https://byse.sx/d/{id}`) |
+| `mediafire` | [MediaFire Core API 1.5](https://www.mediafire.com/developers/core_api/1.5/getting_started/) | Quickkey | `https://www.mediafire.com/file/{id}` |
+
+None of the built-in drivers has driver specific `settings`. Providers
+created from code without a registry entry (`ByseProvider(...)`,
+`MediaFireProvider(fileUrlTemplate: ...)`) use the same defaults.
 
 MediaFire accounts sign in with email and password only (the library
 sends MediaFire's public application id that the API requires). Its uploads

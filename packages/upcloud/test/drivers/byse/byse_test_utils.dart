@@ -15,8 +15,9 @@ Map<String, Object?> byseFixture(String name) =>
 
 /// A [ByseProvider] wired to a mocked [DioAdapter].
 final class ByseHarness {
-  /// Creates the harness. [limits] replaces the default Byse limits.
-  ByseHarness({ProviderLimits? limits}) {
+  /// Creates the harness. [limits] replaces the default Byse limits;
+  /// [definition] defaults to the one of the driver.
+  ByseHarness({ProviderLimits? limits, ProviderDefinition? definition}) {
     dio = Dio();
     adapter = DioAdapter(dio: dio);
     dio.interceptors.add(
@@ -30,6 +31,7 @@ final class ByseHarness {
     provider = ByseProvider(
       credentials: Credentials.apiKey(testApiKey),
       options: ProviderOptions(dio: dio, maxRetries: 0, limits: limits),
+      definition: definition,
     );
   }
 

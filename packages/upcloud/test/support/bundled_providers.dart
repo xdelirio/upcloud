@@ -30,7 +30,7 @@ final ProviderDefinition xVideoSharing = testXvsDefinition(
   ),
   apiBase: Uri.parse('https://xvideosharing.com/api'),
   limits: const LimitsConfig(maxFileSizeMb: 1000),
-  pageUrlTemplate: 'https://xvideosharing.com/{code}.html',
+  fileUrlTemplate: 'https://xvideosharing.com/{id}.html',
 );
 
 /// Builds an `xvs` definition from arguments, as a registry entry would.
@@ -39,7 +39,7 @@ ProviderDefinition testXvsDefinition({
   required Uri apiBase,
   LimitsConfig? limits,
   CredentialSchema? credentials,
-  String? pageUrlTemplate,
+  String? fileUrlTemplate,
   Set<Capability> disabledCapabilities = const {},
 }) => xvsDriver.definitionFor(
   ProviderConfig(
@@ -48,9 +48,9 @@ ProviderDefinition testXvsDefinition({
     driver: XvsDriver.driverId,
     website: info.website,
     apiBase: apiBase,
+    fileUrlTemplate: fileUrlTemplate,
     limits: limits,
     credentials: credentials?.fields,
-    settings: {XvsDriver.pageUrlTemplateKey: ?pageUrlTemplate},
     disabledCapabilities: [for (final c in disabledCapabilities) c.name],
   ),
 );

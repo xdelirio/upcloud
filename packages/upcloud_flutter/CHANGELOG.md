@@ -39,7 +39,10 @@ Unpublished.
 * Compact `ProviderPicker` (icon and name; `showDetails` for more) and
   `CapabilityChips`. `ProviderAvatar` shows PNG/ICO and SVG provider icons.
 * `ProviderList`, `ProviderEditor` and `showProviderEditor` to manage the
-  provider registry.
+  provider registry. The editor has a "File link template" field
+  (`ProviderConfig.fileUrlTemplate`, an https URL containing `{id}`,
+  hinting the default of the driver) next to the API URLs, and lists the
+  driver specific settings only for drivers that have some.
 * `CloudBrowserController`, `TransfersController` (with batch actions and
   `TransfersState.batches`), `AccountsController` and
   `ProvidersController`.

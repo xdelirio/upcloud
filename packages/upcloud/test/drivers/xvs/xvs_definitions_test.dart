@@ -107,19 +107,37 @@ void main() {
       expect(definition.credentialSchema, schema);
     });
 
-    test('reads the page link template from the entry settings', () {
+    test('passes the file link template of the entry to providers', () {
       final definition = testXvsDefinition(
         info: const ProviderInfo(id: 'c', name: 'C'),
         apiBase: Uri.parse('https://custom.test/api'),
-        pageUrlTemplate: 'https://custom.test/v/{code}',
+        fileUrlTemplate: 'https://custom.test/v/{id}',
       );
-      final provider =
-          definition.create(Credentials.apiKey('k')) as XvsProvider;
-      addTearDown(provider.close);
 
+      expect(definition.fileUrlTemplate, 'https://custom.test/v/{id}');
+      expect(definition.fileUrl('abc'), Uri.parse('https://custom.test/v/abc'));
+      expect(xvsDriver.settings, isEmpty);
+    });
+
+    test('has no default file link template', () {
+      final definition = testXvsDefinition(
+        info: const ProviderInfo(id: 'c', name: 'C'),
+        apiBase: Uri.parse('https://custom.test/api'),
+      );
+
+      expect(definition.fileUrlTemplate, isNull);
+      expect(definition.fileUrl('abc'), isNull);
+    });
+
+    test('registry entries link files to their websites', () {
+      expect(streamHg.fileUrl('abc'), Uri.parse('https://hgcloud.to/abc'));
       expect(
-        provider.config.pageUrl('abc'),
-        Uri.parse('https://custom.test/v/abc'),
+        earnVids.fileUrl('abc'),
+        Uri.parse('https://morencius.com/file/abc'),
+      );
+      expect(
+        xVideoSharing.fileUrl('abc'),
+        Uri.parse('https://xvideosharing.com/abc.html'),
       );
     });
 
@@ -148,17 +166,6 @@ void main() {
         ConfigProblemCode.insecureUrl,
         ConfigProblemCode.invalidUrl,
       ]);
-    });
-  });
-
-  group('XvsConfig', () {
-    test('expands the page template with the encoded file code', () {
-      const config = XvsConfig(
-        pageUrlTemplate: 'https://host.test/{code}.html',
-      );
-
-      expect(config.pageUrl('a b'), Uri.parse('https://host.test/a%20b.html'));
-      expect(const XvsConfig().pageUrl('abc'), isNull);
     });
   });
 }

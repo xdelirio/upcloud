@@ -84,6 +84,7 @@ final class ProviderDefinition {
     required this._factory,
     this.defaultLimits = ProviderLimits.none,
     this.defaultBaseUrl,
+    this.fileUrlTemplate,
     this.config,
   });
 
@@ -102,6 +103,13 @@ final class ProviderDefinition {
 
   /// API base URL used unless overridden by [ProviderOptions.baseUrl].
   final Uri? defaultBaseUrl;
+
+  /// Public link of a file, with [ProviderConfig.fileIdPlaceholder] where
+  /// the file id goes, used when the API does not return the link.
+  ///
+  /// `CloudDriver.definitionFor` sets it to [ProviderConfig.fileUrlTemplate],
+  /// or to the default of the driver when the entry has none.
+  final String? fileUrlTemplate;
 
   /// Registry entry this definition was built from, if any.
   final ProviderConfig? config;
@@ -123,6 +131,12 @@ final class ProviderDefinition {
   /// Limits to use with [options].
   ProviderLimits limitsFor(ProviderOptions options) =>
       options.limits ?? defaultLimits;
+
+  /// Link of the file [id] built from [fileUrlTemplate], or `null` when
+  /// there is no template (see [ProviderConfig.expandFileUrl]).
+  ///
+  /// Drivers use it when the API does not return the link of a file.
+  Uri? fileUrl(String id) => ProviderConfig.expandFileUrl(fileUrlTemplate, id);
 
   @override
   String toString() => 'ProviderDefinition(${info.id})';

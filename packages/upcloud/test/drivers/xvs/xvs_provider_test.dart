@@ -250,6 +250,28 @@ void main() {
       expect(file.createdAt, DateTime.utc(2021, 8, 10, 20, 51, 52));
     });
 
+    test('fileInfo builds the link with the template of the entry', () async {
+      h = XvsHarness(definition: streamHg)
+        ..onGet('file/info', fixture('file_info_streamhg'));
+
+      final file = await h.provider.fileInfo(const FileId('fb5asfuj2snh'));
+
+      expect(file.pageUrl, Uri.parse('https://hgcloud.to/fb5asfuj2snh'));
+    });
+
+    test('files get no link without API link nor template', () async {
+      h = XvsHarness(
+        definition: testXvsDefinition(
+          info: const ProviderInfo(id: 'plain', name: 'Plain'),
+          apiBase: Uri.parse('https://plain.test/api'),
+        ),
+      )..onGet('file/info', fixture('file_info_streamhg'));
+
+      final file = await h.provider.fileInfo(const FileId('fb5asfuj2snh'));
+
+      expect(file.pageUrl, isNull, reason: 'xvs has no default template');
+    });
+
     test('fileInfo throws NotFoundException for unknown codes', () async {
       h.onGet('file/info', fixture('file_info_not_found'));
 

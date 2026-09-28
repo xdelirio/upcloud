@@ -13,6 +13,18 @@ Initial preview.
   apps use the background executor of `upcloud_flutter`.
 - Share links in `CloudFile.pageUrl`; remote uploads with
   `remoteUploadStatus`.
+- File links configured per provider: `ProviderConfig.fileUrlTemplate`
+  (`fileUrlTemplate` in the registry, `{id}` is the file id: file code
+  for `xvs` and `byse`, quickkey for `mediafire`), expanded with
+  `ProviderConfig.fileUrl` / `ProviderConfig.expandFileUrl` (the id is
+  URL-encoded). Drivers use the link returned by the API, else the
+  template of the entry, else their default
+  (`CloudDriver.defaultFileUrlTemplate`: `{website}/d/{id}` for Byse,
+  `https://www.mediafire.com/file/{id}` for MediaFire, none for `xvs`),
+  exposed as `ProviderDefinition.fileUrlTemplate` and
+  `ProviderDefinition.fileUrl`. `MediaFireProvider` accepts a
+  `fileUrlTemplate`. Templates must be `https` URLs containing `{id}`
+  (`ConfigProblemCode.missingIdPlaceholder`).
 - Provider registry: drivers in code, providers as JSON data. Bundled
   registry, remote updates with ETag caching and user edits stored with a
   pluggable `KeyValueStore` (`RegistryStore`). Typed validation

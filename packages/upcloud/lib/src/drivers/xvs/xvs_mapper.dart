@@ -4,16 +4,21 @@ import 'package:upcloud/src/core/models/cloud_entry.dart';
 import 'package:upcloud/src/core/models/data_size.dart';
 import 'package:upcloud/src/core/models/ids.dart';
 import 'package:upcloud/src/core/models/remote_upload.dart';
-import 'package:upcloud/src/drivers/xvs/xvs_config.dart';
 import 'package:upcloud/src/drivers/xvs/xvs_dtos.dart';
+import 'package:upcloud/src/registry/provider_config.dart';
 
 /// Converts XVS API objects into upcloud models.
 final class XvsMapper {
-  /// Creates a mapper that builds page links with [config].
-  const XvsMapper(this.config);
+  /// Creates a mapper that builds the links the API does not return with
+  /// [fileUrlTemplate] (see `ProviderConfig.fileUrlTemplate`).
+  const XvsMapper({this.fileUrlTemplate});
 
-  /// Configuration of the clone.
-  final XvsConfig config;
+  /// Public link of a file, `{id}` is the file code.
+  final String? fileUrlTemplate;
+
+  /// Link of the file [code] built from [fileUrlTemplate], or `null`.
+  Uri? fileUrl(String code) =>
+      ProviderConfig.expandFileUrl(fileUrlTemplate, code);
 
   /// Id of the root folder in the XVS API.
   static const rootFolderId = '0';
@@ -48,7 +53,7 @@ final class XvsMapper {
       size: size(dto.size) ?? _largestVersion(dto.sizes),
       createdAt: dto.createdAt,
       thumbnailUrl: dto.thumbnail,
-      pageUrl: dto.link ?? config.pageUrl(code),
+      pageUrl: dto.link ?? fileUrl(code),
       duration: duration == null || duration == Duration.zero ? null : duration,
       views: dto.views,
       isPublic: dto.isPublic,

@@ -7,5 +7,6 @@ export 'mediafire_driver.dart'
         mediaFireCapabilities,
         mediaFireDefaultBaseUrl,
         mediaFireDriver,
+        mediaFireFileUrlTemplate,
         mediaFireLimits;
 export 'mediafire_provider.dart' show MediaFireCredentials, MediaFireProvider;

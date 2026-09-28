@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:test/test.dart';
 import 'package:upcloud/upcloud.dart';
 
+import '../../support/bundled_providers.dart';
 import 'mediafire_harness.dart';
 
 /// A `folder/get_content` chunk of [count] generated items starting at
@@ -223,6 +224,46 @@ void main() {
         provider.listFolder(const FolderId('nope')),
         throwsA(isA<NotFoundException>()),
       );
+    });
+  });
+
+  group('file links', () {
+    Future<Uri?> firstLink(MediaFireProvider provider) async {
+      serveContent(mf, folders: 0, files: 1);
+      final page = await provider.listFolder(null);
+      return (page.items.single as CloudFile).pageUrl;
+    }
+
+    test('providers created from code use the default template', () async {
+      expect(
+        await firstLink(provider),
+        Uri.parse('https://www.mediafire.com/file/file0'),
+      );
+      expect(mediaFire.fileUrlTemplate, mediaFireFileUrlTemplate);
+    });
+
+    test('use the template of the entry when the API has no link', () async {
+      final definition = mediaFireDriver.definitionFor(
+        mediaFire.config!.copyWith(fileUrlTemplate: 'https://mf.test/f/{id}'),
+      );
+      final custom = definition.create(
+        MediaFireHarness.credentials,
+        options: ProviderOptions(dio: mf.dio, maxRetries: 0),
+      ) as MediaFireProvider;
+      addTearDown(custom.close);
+
+      expect(await firstLink(custom), Uri.parse('https://mf.test/f/file0'));
+    });
+
+    test('the constructor accepts a template', () async {
+      final custom = MediaFireProvider(
+        credentials: MediaFireHarness.credentials,
+        options: ProviderOptions(dio: mf.dio, maxRetries: 0),
+        fileUrlTemplate: 'https://mf.test/{id}.html',
+      );
+      addTearDown(custom.close);
+
+      expect(await firstLink(custom), Uri.parse('https://mf.test/file0.html'));
     });
   });
 

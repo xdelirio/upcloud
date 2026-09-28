@@ -637,7 +637,7 @@ abstract class UpCloudLocalizations {
   /// Title of the section with name, description and website.
   String get general;
 
-  /// Title of the section with API URLs.
+  /// Title of the section with API URLs and the file link template.
   String get connection;
 
   /// Title of the limits section.
@@ -675,6 +675,15 @@ abstract class UpCloudLocalizations {
 
   /// Label of the add mirror button.
   String get addMirror;
+
+  /// Label of the file link template field of a provider.
+  String get fileUrlTemplate;
+
+  /// Helper text of the file link template field.
+  String get fileUrlTemplateHelper;
+
+  /// Validation message of invalid file link templates.
+  String get invalidFileUrlTemplate;
 
   /// Label of the maximum file size field.
   String get maxFileSizeMb;

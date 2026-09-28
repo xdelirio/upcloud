@@ -364,6 +364,8 @@ class UpCloudLocalizationsEn extends UpCloudLocalizations {
     ConfigProblemCode.invalidUrl => 'Enter a complete URL (https://...).',
     ConfigProblemCode.insecureUrl =>
       'URLs must use https so credentials are not sent in clear text.',
+    ConfigProblemCode.missingIdPlaceholder =>
+      'The file link template must contain {id}.',
     ConfigProblemCode.other => problem.message,
   };
 
@@ -455,6 +457,15 @@ class UpCloudLocalizationsEn extends UpCloudLocalizations {
 
   @override
   String get addMirror => 'Add mirror';
+
+  @override
+  String get fileUrlTemplate => 'File link template';
+
+  @override
+  String get fileUrlTemplateHelper => '{id} is replaced by the file id';
+
+  @override
+  String get invalidFileUrlTemplate => 'Enter an https URL that contains {id}';
 
   @override
   String get maxFileSizeMb => 'Max. file size (MB)';

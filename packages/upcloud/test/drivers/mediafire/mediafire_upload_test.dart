@@ -170,6 +170,10 @@ void main() {
       expect(file.name, 'test 001.txt');
       expect(file.size, const DataSize(11));
       expect(file.folderId, const FolderId('rfoh06y8w3amg'));
+      expect(
+        file.pageUrl,
+        Uri.parse('https://www.mediafire.com/file/7a8kc7354q939b6'),
+      );
     });
 
     test('storage full while processing throws QuotaExceeded', () async {

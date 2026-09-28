@@ -25,6 +25,10 @@ import 'package:upcloud/src/drivers/xvs/xvs_mapper.dart';
 /// feature list it in [XvsConfig.disabledCapabilities]; the matching
 /// methods then throw [UnsupportedOperationException].
 ///
+/// Files get the link returned by the API in [CloudFile.pageUrl], or one
+/// built from [ProviderDefinition.fileUrlTemplate] (`{id}` is the file
+/// code) when the API returns none.
+///
 /// Usually created by `xvsDriver` for a registry entry:
 ///
 /// ```dart
@@ -67,6 +71,7 @@ final class XvsProvider
       limits: limits,
       baseUrl: baseUrl,
       config: config,
+      fileUrlTemplate: definition.fileUrlTemplate,
       api: XvsApi(dio, () => credentials.apiKey),
       ownsHttpClient: options.dio == null,
     );
@@ -77,9 +82,10 @@ final class XvsProvider
     required this.limits,
     required this.baseUrl,
     required this.config,
+    required String? fileUrlTemplate,
     required this._api,
     required this._ownsHttpClient,
-  }) : _mapper = XvsMapper(config);
+  }) : _mapper = XvsMapper(fileUrlTemplate: fileUrlTemplate);
 
   @override
   final ProviderInfo info;
@@ -373,7 +379,7 @@ final class XvsProvider
         name: context[_titleKey] ?? uploaded.name ?? context[_nameKey] ?? code,
         folderId: folder == null ? null : FolderId(folder),
         size: size,
-        pageUrl: config.pageUrl(code),
+        pageUrl: _mapper.fileUrl(code),
         isPublic: switch (context[_publicKey]) {
           '1' => true,
           '0' => false,

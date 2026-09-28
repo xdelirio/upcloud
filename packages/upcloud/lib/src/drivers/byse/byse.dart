@@ -2,5 +2,12 @@
 library;
 
 export 'byse_driver.dart'
-    show ByseDriver, byseApiBaseUrl, byseCapabilities, byseDriver, byseLimits;
+    show
+        ByseDriver,
+        byseApiBaseUrl,
+        byseCapabilities,
+        byseDriver,
+        byseFileUrlTemplate,
+        byseLimits,
+        byseWebsite;
 export 'byse_provider.dart' show ByseProvider;

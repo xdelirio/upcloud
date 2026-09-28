@@ -16,6 +16,7 @@ import 'package:upcloud/src/core/provider_limits.dart';
 import 'package:upcloud/src/drivers/byse/byse_api.dart';
 import 'package:upcloud/src/drivers/byse/byse_driver.dart';
 import 'package:upcloud/src/drivers/byse/byse_mappers.dart';
+import 'package:upcloud/src/registry/provider_config.dart';
 
 /// A connection to a Byse (https://byse.sx) account.
 ///
@@ -26,8 +27,10 @@ import 'package:upcloud/src/drivers/byse/byse_mappers.dart';
 /// move or delete folders: those methods throw
 /// [UnsupportedOperationException].
 ///
-/// Files get their share link (`https://byse.sx/d/{code}`) in
-/// [CloudFile.pageUrl].
+/// Files get their share link in [CloudFile.pageUrl]: the one returned by
+/// the API, or one built from [ProviderDefinition.fileUrlTemplate]
+/// (`{id}` is the file code), or the watch page of the website
+/// ([byseFileUrlTemplate], `https://byse.sx/d/{id}`).
 final class ByseProvider
     implements
         FolderBrowsing,
@@ -58,6 +61,10 @@ final class ByseProvider
     return ByseProvider._(
       info: def.info,
       limits: limits,
+      fileUrlTemplate: switch (def.fileUrlTemplate?.trim()) {
+        final template? when template.isNotEmpty => template,
+        _ => byseFileUrlTemplate(def.info.website),
+      },
       api: ByseApi(dio, apiKey),
       ownsDio: options.dio == null,
     );
@@ -66,6 +73,7 @@ final class ByseProvider
   ByseProvider._({
     required this.info,
     required this.limits,
+    required this._fileUrlTemplate,
     required this._api,
     required this._ownsDio,
   });
@@ -75,6 +83,10 @@ final class ByseProvider
 
   @override
   final ProviderLimits limits;
+
+  /// Link of the files whose link the API does not return, `{id}` is the
+  /// file code.
+  final String _fileUrlTemplate;
 
   /// Byse can create folders but not rename, move or delete them, and can
   /// move files but not rename or delete them.
@@ -92,8 +104,6 @@ final class ByseProvider
   /// Remote uploads queued by this instance. Byse has no endpoint that lists
   /// them, so [remoteUploads] queries each one.
   final Set<String> _remoteJobs = {};
-
-  Uri get _site => info.website ?? Uri.https('byse.sx');
 
   /// Closes the HTTP client, unless it was given in
   /// [ProviderOptions.dio].
@@ -202,7 +212,10 @@ final class ByseProvider
           response: json,
         );
       }
-      return byseFileFromJson({...item, 'file_code': id.value}, site: _site)!;
+      return byseFileFromJson({
+        ...item,
+        'file_code': id.value,
+      }, fileUrlTemplate: _fileUrlTemplate)!;
     }
     throw NotFoundException('File ${id.value} not found');
   }
@@ -250,7 +263,8 @@ final class ByseProvider
     final data = byseFilePageFromJson(json['result']);
     return PagedResult(
       items: [
-        for (final item in data.files) ?byseFileFromJson(item, site: _site),
+        for (final item in data.files)
+          ?byseFileFromJson(item, fileUrlTemplate: _fileUrlTemplate),
       ],
       request: page,
       totalItems: data.totalItems,
@@ -326,7 +340,9 @@ final class ByseProvider
       name: context[_nameKey] ?? code,
       folderId: folder == null ? null : FolderId(folder),
       size: length == null ? null : DataSize(length),
-      pageUrl: byseFileUrl(_site, 'd', code),
+      pageUrl:
+          readUri(uploaded['link']) ??
+          ProviderConfig.expandFileUrl(_fileUrlTemplate, code),
       isReady: false,
       extra: {'filename': ?readString(uploaded['filename'])},
     );

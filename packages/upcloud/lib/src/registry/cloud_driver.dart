@@ -84,6 +84,11 @@ abstract base class CloudDriver {
   CredentialSchema defaultCredentials(ProviderConfig config) =>
       CredentialSchema.apiKey();
 
+  /// File link template used when [config] has no
+  /// [ProviderConfig.fileUrlTemplate], or `null` when the driver has no
+  /// default (files then only get the links returned by the API).
+  String? defaultFileUrlTemplate(ProviderConfig config) => null;
+
   /// Creates a provider for [definition] (built from a [ProviderConfig],
   /// available as [ProviderDefinition.config]).
   CloudProvider create(
@@ -117,6 +122,10 @@ abstract base class CloudDriver {
       capabilities: capabilities.difference(config.disabledCapabilitySet),
       defaultLimits: config.limits?.applyTo(defaultLimits) ?? defaultLimits,
       defaultBaseUrl: config.apiBase,
+      fileUrlTemplate: switch (config.fileUrlTemplate?.trim()) {
+        final template? when template.isNotEmpty => template,
+        _ => defaultFileUrlTemplate(config),
+      },
       config: config,
       factory: (definition, credentials, options) => create(
         definition,
@@ -167,7 +176,43 @@ abstract base class CloudDriver {
       ),
     ..._urlProblems('apiBase', [?config.apiBase]),
     ..._urlProblems('mirrors', config.mirrors),
+    ?fileUrlTemplateProblem(config.fileUrlTemplate),
   ];
+
+  /// Problem of a file link [template] (see
+  /// [ProviderConfig.fileUrlTemplate]), or `null` when it is valid.
+  ///
+  /// The template must be an absolute `https` URL that contains
+  /// [ProviderConfig.fileIdPlaceholder]. A `null` or blank template is
+  /// valid: the driver default is used.
+  static ConfigProblem? fileUrlTemplateProblem(String? template) {
+    if (template == null || template.trim().isEmpty) return null;
+    const field = 'fileUrlTemplate';
+    const placeholder = ProviderConfig.fileIdPlaceholder;
+    if (!template.contains(placeholder)) {
+      return const ConfigProblem(
+        ConfigProblemCode.missingIdPlaceholder,
+        '$field must contain $placeholder',
+        field: field,
+      );
+    }
+    final url = ProviderConfig.expandFileUrl(template, 'id');
+    if (url == null) {
+      return ConfigProblem(
+        ConfigProblemCode.invalidUrl,
+        '$field must be an absolute URL: $template',
+        field: field,
+      );
+    }
+    if (url.scheme != 'https') {
+      return ConfigProblem(
+        ConfigProblemCode.insecureUrl,
+        '$field must use https: $template',
+        field: field,
+      );
+    }
+    return null;
+  }
 
   static final _idPattern = RegExp(r'^[a-z0-9][a-z0-9_-]*$');
 

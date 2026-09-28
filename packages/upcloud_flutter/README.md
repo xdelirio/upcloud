@@ -29,8 +29,8 @@ build a multi-cloud file manager with a few widgets.
   selected provider (generated from its `CredentialSchema`), in one screen.
   Also **`AccountList`**, **`ProviderPicker`** and **`CapabilityChips`**.
 - **`ProviderList`** and **`ProviderEditor`**: manage the provider registry
-  (enable, edit domains/limits/driver settings, reset, add custom
-  providers, check for registry updates).
+  (enable, edit domains, file link template, limits and driver settings,
+  reset, add custom providers, check for registry updates).
 - `ChangeNotifier` controllers with immutable state:
   `CloudBrowserController`, `TransfersController`, `UploadComposerController`,
   `AccountsController`, `ProvidersController`.

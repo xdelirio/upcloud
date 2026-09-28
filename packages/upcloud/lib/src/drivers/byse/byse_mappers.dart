@@ -4,6 +4,7 @@ import 'package:upcloud/src/core/models/cloud_entry.dart';
 import 'package:upcloud/src/core/models/data_size.dart';
 import 'package:upcloud/src/core/models/ids.dart';
 import 'package:upcloud/src/core/models/remote_upload.dart';
+import 'package:upcloud/src/registry/provider_config.dart';
 
 // Hand written mappers from Byse JSON objects to domain models.
 //
@@ -57,9 +58,13 @@ const _fileKeys = {
 /// `file_fld_id`, `file_length`...) and names the thumbnail `player_img`;
 /// both spellings are accepted.
 ///
-/// [site] builds the watch page (`{site}/d/{code}`) when the API does not
-/// return a `link`. Returns `null` when the object has no file code.
-CloudFile? byseFileFromJson(Map<String, Object?> json, {required Uri site}) {
+/// [fileUrlTemplate] builds the link (`{id}` is the file code) when the
+/// API does not return a `link`. Returns `null` when the object has no file
+/// code.
+CloudFile? byseFileFromJson(
+  Map<String, Object?> json, {
+  String? fileUrlTemplate,
+}) {
   final code = byseFileCode(json);
   if (code == null) return null;
   Object? read(String key) => json[key] ?? json['file_$key'];
@@ -76,7 +81,9 @@ CloudFile? byseFileFromJson(Map<String, Object?> json, {required Uri site}) {
     size: size == null || size < 0 ? null : DataSize(size),
     createdAt: readDateTime(json['uploaded'] ?? json['file_created']),
     thumbnailUrl: readUri(json['thumbnail'] ?? json['player_img']),
-    pageUrl: readUri(json['link']) ?? byseFileUrl(site, 'd', code),
+    pageUrl:
+        readUri(json['link']) ??
+        ProviderConfig.expandFileUrl(fileUrlTemplate, code),
     duration: length == null || length == Duration.zero ? null : length,
     views: readInt(read('views')),
     isPublic: readBool(read('public')),
@@ -217,18 +224,6 @@ double? bysePercent(Object? value) {
   if (percent == null) return null;
   return (percent / 100).clamp(0, 1).toDouble();
 }
-
-/// Builds `{base}/{segment}/{code}`, e.g. the watch page (`d`) of a file.
-Uri byseFileUrl(Uri base, String segment, String code) => Uri(
-  scheme: base.scheme,
-  host: base.host,
-  port: base.hasPort ? base.port : null,
-  pathSegments: [
-    ...base.pathSegments.where((s) => s.isNotEmpty),
-    segment,
-    code,
-  ],
-);
 
 Map<String, Object?> _extra(Map<String, Object?> json, Set<String> known) => {
   for (final MapEntry(:key, :value) in json.entries)

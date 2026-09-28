@@ -11,10 +11,11 @@ final _idPattern = RegExp(r'^[a-z0-9][a-z0-9_-]*$');
 /// Edits a [ProviderConfig] of the provider registry, or creates a custom
 /// provider when [initial] is `null`.
 ///
-/// Offers the name, description, website, API base URL, mirrors, upload
-/// limits, the driver specific settings (`CloudDriver.settings`) and the
-/// enabled flag. New providers also choose an id and a driver. Modified
-/// entries can be reset to the registry defaults.
+/// Offers the name, description, website, API base URL, mirrors, file
+/// link template (`ProviderConfig.fileUrlTemplate`), upload limits, the
+/// driver specific settings (`CloudDriver.settings`) and the enabled flag.
+/// New providers also choose an id and a driver. Modified entries can be
+/// reset to the registry defaults.
 ///
 /// The form is not scrollable; place it inside a scroll view, or use
 /// [showProviderEditor].
@@ -56,6 +57,7 @@ class _ProviderEditorState extends State<ProviderEditor> {
   final _description = TextEditingController();
   final _website = TextEditingController();
   final _apiBase = TextEditingController();
+  final _fileUrlTemplate = TextEditingController();
   final _maxSize = TextEditingController();
   final _extensions = TextEditingController();
   final _mirrors = <TextEditingController>[];
@@ -94,6 +96,7 @@ class _ProviderEditorState extends State<ProviderEditor> {
     _description.text = config?.description ?? '';
     _website.text = config?.website?.toString() ?? '';
     _apiBase.text = config?.apiBase?.toString() ?? '';
+    _fileUrlTemplate.text = config?.fileUrlTemplate ?? '';
     final maxSize = config?.limits?.maxFileSizeMb;
     _maxSize.text = maxSize == null ? '' : _formatNumber(maxSize);
     _extensions.text = config?.limits?.allowedExtensions?.join(', ') ?? '';
@@ -143,6 +146,7 @@ class _ProviderEditorState extends State<ProviderEditor> {
       _description,
       _website,
       _apiBase,
+      _fileUrlTemplate,
       _maxSize,
       _extensions,
       ..._mirrors,
@@ -197,12 +201,14 @@ class _ProviderEditorState extends State<ProviderEditor> {
       }
     }
     final description = _description.text.trim();
+    final fileUrlTemplate = _fileUrlTemplate.text.trim();
     return base.copyWith(
       name: _name.text.trim(),
       description: description.isEmpty ? null : description,
       website: parseHttpUrl(_website.text),
       apiBase: parseHttpUrl(_apiBase.text),
       mirrors: [for (final mirror in _mirrors) ?parseHttpUrl(mirror.text)],
+      fileUrlTemplate: fileUrlTemplate.isEmpty ? null : fileUrlTemplate,
       limits: limits == const LimitsConfig() ? null : limits,
       settings: settings,
       enabled: _enabled,
@@ -438,6 +444,30 @@ class _ProviderEditorState extends State<ProviderEditor> {
               label: Text(l10n.addMirror),
             ),
           ),
+          const SizedBox(height: 8),
+          TextFormField(
+            key: const ValueKey('upcloud-provider-file-url-template'),
+            controller: _fileUrlTemplate,
+            enabled: enabled,
+            autocorrect: false,
+            keyboardType: TextInputType.url,
+            decoration: InputDecoration(
+              labelText: '${l10n.fileUrlTemplate} (${l10n.optional})',
+              helperText: l10n.fileUrlTemplateHelper,
+              helperMaxLines: 2,
+              hintText:
+                  _defaultFileUrlTemplate(driver) ??
+                  'https://…/${ProviderConfig.fileIdPlaceholder}',
+              prefixIcon: const Icon(Icons.link_rounded),
+            ),
+            validator: (value) {
+              final text = value?.trim() ?? '';
+              if (text.isEmpty) return null;
+              return CloudDriver.fileUrlTemplateProblem(text) == null
+                  ? null
+                  : l10n.invalidFileUrlTemplate;
+            },
+          ),
           section(l10n.limits),
           TextFormField(
             key: const ValueKey('upcloud-provider-max-size'),
@@ -526,6 +556,17 @@ class _ProviderEditorState extends State<ProviderEditor> {
           ),
         ],
       ),
+    );
+  }
+
+  /// Template the driver uses when the field is empty, shown as a hint.
+  String? _defaultFileUrlTemplate(CloudDriver? driver) {
+    if (driver == null) return null;
+    final base = _base;
+    return driver.defaultFileUrlTemplate(
+      base != null && base.driver == driver.id
+          ? base
+          : ProviderConfig(id: '', name: '', driver: driver.id),
     );
   }
 

@@ -22,8 +22,8 @@ part 'provider_config.g.dart';
 ///   "website": "https://streamhg.com",
 ///   "apiBase": "https://streamhgapi.com/api",
 ///   "mirrors": ["https://streamhgapi.net/api"],
-///   "limits": {"maxFileSizeMb": 2048},
-///   "settings": {"embedUrlTemplate": "https://streamhg.com/e/{code}"}
+///   "fileUrlTemplate": "https://hgcloud.to/{id}",
+///   "limits": {"maxFileSizeMb": 2048}
 /// }
 /// ```
 @freezed
@@ -53,13 +53,21 @@ abstract class ProviderConfig with _$ProviderConfig {
     /// reached (connection errors only).
     @Default(<Uri>[]) List<Uri> mirrors,
 
+    /// Public link of a file, with [fileIdPlaceholder] where the file id
+    /// of the provider goes (e.g. `https://hgcloud.to/{id}`).
+    ///
+    /// Drivers use the link returned by the API when there is one, then
+    /// this template, then the default of the driver, if any (see
+    /// `CloudDriver.defaultFileUrlTemplate`). See [fileUrl].
+    String? fileUrlTemplate,
+
     /// Overrides the driver's default limits.
     LimitsConfig? limits,
 
     /// Overrides the driver's default credential fields.
     List<CredentialField>? credentials,
 
-    /// Driver specific settings (e.g. `embedUrlTemplate` for `xvs`).
+    /// Driver specific settings (see `CloudDriver.settings`).
     @Default(<String, Object?>{}) Map<String, Object?> settings,
 
     /// Names of [Capability] values the provider does not offer.
@@ -74,6 +82,33 @@ abstract class ProviderConfig with _$ProviderConfig {
   /// Reads a config from registry JSON.
   factory ProviderConfig.fromJson(Map<String, dynamic> json) =>
       _$ProviderConfigFromJson(json);
+
+  /// Placeholder of [fileUrlTemplate] replaced by the file id: the file
+  /// code for `xvs` and `byse`, the quickkey for `mediafire`.
+  static const fileIdPlaceholder = '{id}';
+
+  /// Link of the file [id] built from [fileUrlTemplate], or `null` when
+  /// there is no template (see [expandFileUrl]).
+  ///
+  /// ```dart
+  /// config.fileUrl('a b'); // https://hgcloud.to/a%20b
+  /// ```
+  Uri? fileUrl(String id) => expandFileUrl(fileUrlTemplate, id);
+
+  /// Replaces [fileIdPlaceholder] in [template] with the URL-encoded [id].
+  ///
+  /// Returns `null` when [template] or [id] is empty, when [template] has
+  /// no placeholder or when the result is not an absolute URL.
+  static Uri? expandFileUrl(String? template, String id) {
+    final value = template?.trim();
+    if (value == null || id.isEmpty || !value.contains(fileIdPlaceholder)) {
+      return null;
+    }
+    final url = Uri.tryParse(
+      value.replaceAll(fileIdPlaceholder, Uri.encodeComponent(id)),
+    );
+    return url != null && url.hasScheme && url.host.isNotEmpty ? url : null;
+  }
 
   /// [disabledCapabilities] as enum values; unknown names are ignored.
   Set<Capability> get disabledCapabilitySet => {

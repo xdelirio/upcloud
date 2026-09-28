@@ -82,6 +82,15 @@
             "pattern": "^https://"
           }
         },
+        "fileUrlTemplate": {
+          "description": "Public link of a file, used when the API does not return it. {id} is replaced by the URL-encoded file id of the provider (xvs and byse: file code, mediafire: quickkey). Without it, drivers use their default: byse {website}/d/{id}, mediafire https://www.mediafire.com/file/{id}; xvs has none, so its files only get the links returned by the API.",
+          "type": "string",
+          "pattern": "^https://[^\\s{}/]+[^\\s]*\\{id\\}[^\\s]*$",
+          "examples": [
+            "https://hgcloud.to/{id}",
+            "https://myhost.example/{id}.html"
+          ]
+        },
         "limits": {
           "$ref": "#/$defs/limits"
         },
@@ -93,7 +102,7 @@
           }
         },
         "settings": {
-          "description": "Driver specific settings. xvs: pageUrlTemplate ({code} is the file code), used when the API does not return the file link.",
+          "description": "Driver specific settings (CloudDriver.settings). The built-in drivers (xvs, byse, mediafire) have none.",
           "type": "object"
         },
         "disabledCapabilities": {

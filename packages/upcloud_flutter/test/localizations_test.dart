@@ -53,6 +53,22 @@ void main() {
     );
   });
 
+  test('translates the file link template texts', () {
+    const en = UpCloudLocalizationsEn();
+    const es = UpCloudLocalizationsEs();
+    const problem = ConfigProblem(
+      ConfigProblemCode.missingIdPlaceholder,
+      'fileUrlTemplate must contain {id}',
+      field: 'fileUrlTemplate',
+    );
+    expect(en.fileUrlTemplate, 'File link template');
+    expect(en.fileUrlTemplateHelper, '{id} is replaced by the file id');
+    expect(es.fileUrlTemplate, 'Plantilla del enlace del archivo');
+    expect(es.fileUrlTemplateHelper, '{id} se reemplaza por el id del archivo');
+    expect(es.invalidFileUrlTemplate, contains('{id}'));
+    expect(es.configProblem(problem), contains('{id}'));
+  });
+
   test('formats sizes and speeds per language', () {
     const en = UpCloudLocalizationsEn();
     const es = UpCloudLocalizationsEs();

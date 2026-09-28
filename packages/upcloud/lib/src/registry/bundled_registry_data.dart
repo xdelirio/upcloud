@@ -6,7 +6,7 @@ const bundledRegistryJson = r'''
 {
   "$schema": "./providers.schema.json",
   "schemaVersion": 1,
-  "updatedAt": "2026-09-28T03:00:00Z",
+  "updatedAt": "2026-09-28T04:00:00Z",
   "providers": [
     {
       "id": "streamhg",
@@ -16,10 +16,8 @@ const bundledRegistryJson = r'''
       "website": "https://streamhg.com",
       "iconUrl": "https://streamhg.com/HG1/images/favicon/favicon-32x32.png",
       "apiBase": "https://streamhgapi.com/api",
-      "disabledCapabilities": ["deleteFile", "deleteFolder"],
-      "settings": {
-        "pageUrlTemplate": "https://hgcloud.to/{code}"
-      }
+      "fileUrlTemplate": "https://hgcloud.to/{id}",
+      "disabledCapabilities": ["deleteFile", "deleteFolder"]
     },
     {
       "id": "earnvids",
@@ -30,10 +28,8 @@ const bundledRegistryJson = r'''
       "iconUrl": "https://earnvids.site/static/images/favicon/apple-touch-icon.png",
       "apiBase": "https://earnvidsapi.com/api",
       "mirrors": ["https://vidhideapi.com/api"],
-      "disabledCapabilities": ["deleteFile", "deleteFolder"],
-      "settings": {
-        "pageUrlTemplate": "https://morencius.com/file/{code}"
-      }
+      "fileUrlTemplate": "https://morencius.com/file/{id}",
+      "disabledCapabilities": ["deleteFile", "deleteFolder"]
     },
     {
       "id": "byse",
@@ -43,6 +39,7 @@ const bundledRegistryJson = r'''
       "website": "https://byse.sx",
       "iconUrl": "https://filemoon.sx/assets/images/logo.svg",
       "apiBase": "https://api.byse.sx",
+      "fileUrlTemplate": "https://byse.sx/d/{id}",
       "limits": {
         "maxFileSizeMb": 2048
       }
@@ -55,6 +52,7 @@ const bundledRegistryJson = r'''
       "website": "https://www.mediafire.com",
       "iconUrl": "https://www.mediafire.com/favicon.ico",
       "apiBase": "https://www.mediafire.com/api/1.5/",
+      "fileUrlTemplate": "https://www.mediafire.com/file/{id}",
       "limits": {
         "maxFileSizeMb": 5120
       }

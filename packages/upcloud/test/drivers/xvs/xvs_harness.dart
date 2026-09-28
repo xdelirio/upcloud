@@ -18,7 +18,7 @@ Map<String, dynamic> fixture(String name) =>
     jsonDecode(File('test/fixtures/xvs/$name.json').readAsStringSync())
         as Map<String, dynamic>;
 
-/// A generic clone with a page link template.
+/// A generic clone with a file link template.
 final ProviderDefinition testDefinition = testXvsDefinition(
   info: ProviderInfo(
     id: 'xvs-test',
@@ -26,7 +26,7 @@ final ProviderDefinition testDefinition = testXvsDefinition(
     website: Uri.parse('https://xvs.test'),
   ),
   apiBase: Uri.parse('https://xvs.test/api'),
-  pageUrlTemplate: 'https://xvs.test/{code}.html',
+  fileUrlTemplate: 'https://xvs.test/{id}.html',
 );
 
 /// A provider wired to a mocked HTTP client.

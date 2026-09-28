@@ -10,6 +10,22 @@ import 'package:upcloud/src/registry/provider_config.dart';
 /// Default API base URL of Byse.
 final Uri byseApiBaseUrl = Uri.https('api.byse.sx');
 
+/// Home page of Byse, used when a registry entry has no `website`.
+final Uri byseWebsite = Uri.https('byse.sx');
+
+/// Default file link template of Byse: the watch page of the [website]
+/// (`{website}/d/{id}`, `https://byse.sx/d/{id}` by default).
+String byseFileUrlTemplate([Uri? website]) {
+  final site = website ?? byseWebsite;
+  final base = Uri(
+    scheme: site.scheme,
+    host: site.host,
+    port: site.hasPort ? site.port : null,
+    pathSegments: site.pathSegments.where((s) => s.isNotEmpty),
+  );
+  return '$base/d/${ProviderConfig.fileIdPlaceholder}';
+}
+
 /// Default upload limits of Byse.
 ///
 /// The upload page of byse.sx only accepts these extensions and shows a
@@ -68,8 +84,13 @@ final class ByseDriver extends CloudDriver {
   @override
   CredentialSchema defaultCredentials(ProviderConfig config) =>
       CredentialSchema.apiKey(
-        helpUrl: (config.website ?? Uri.https('byse.sx')).resolve('/settings'),
+        helpUrl: (config.website ?? byseWebsite).resolve('/settings'),
       );
+
+  /// The watch page of the website: [byseFileUrlTemplate].
+  @override
+  String defaultFileUrlTemplate(ProviderConfig config) =>
+      byseFileUrlTemplate(config.website);
 
   @override
   CloudProvider create(
@@ -93,7 +114,7 @@ final ProviderDefinition byseFallbackDefinition = byseDriver.definitionFor(
     id: 'byse',
     name: 'Byse',
     driver: ByseDriver.driverId,
-    website: Uri.https('byse.sx'),
+    website: byseWebsite,
     apiBase: byseApiBaseUrl,
   ),
 );

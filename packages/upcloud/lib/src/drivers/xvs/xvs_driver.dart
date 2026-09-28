@@ -36,24 +36,19 @@ const xvsDefaultLimits = ProviderLimits(
 ///   "driver": "xvs",
 ///   "website": "https://myhost.com",
 ///   "apiBase": "https://myhost.com/api",
-///   "settings": {
-///     "pageUrlTemplate": "https://myhost.com/{code}.html"
-///   }
+///   "fileUrlTemplate": "https://myhost.com/{id}.html"
 /// }
 /// ```
 ///
-/// Settings (see [XvsConfig]):
-/// * `pageUrlTemplate`: public page URL of a file, `{code}` is the file
-///   code. Only needed when the API does not return the link itself.
+/// Files get the link returned by the API; when there is none, it is built
+/// from `fileUrlTemplate` (`{id}` is the file code). The driver has no
+/// default template.
 final class XvsDriver extends CloudDriver {
   /// Creates the driver. Prefer the [xvsDriver] instance.
   const XvsDriver();
 
   /// Id of this driver in registry entries.
   static const driverId = 'xvs';
-
-  /// Setting key of [XvsConfig.pageUrlTemplate].
-  static const pageUrlTemplateKey = 'pageUrlTemplate';
 
   @override
   String get id => driverId;
@@ -71,16 +66,6 @@ final class XvsDriver extends CloudDriver {
 
   @override
   ProviderLimits get defaultLimits => xvsDefaultLimits;
-
-  @override
-  List<DriverSetting> get settings => const [
-    DriverSetting(
-      key: pageUrlTemplateKey,
-      label: 'Page URL template',
-      kind: DriverSettingKind.url,
-      description: 'Public page URL, {code} is replaced by the file code.',
-    ),
-  ];
 
   /// A single API key, with a link to the account page of the website.
   @override
@@ -101,7 +86,6 @@ final class XvsDriver extends CloudDriver {
       credentials: credentials,
       options: options,
       config: XvsConfig(
-        pageUrlTemplate: config?.stringSetting(pageUrlTemplateKey),
         disabledCapabilities: config?.disabledCapabilitySet ?? const {},
       ),
     );

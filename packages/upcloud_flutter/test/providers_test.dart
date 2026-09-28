@@ -68,6 +68,44 @@ void main() {
       expect(registry.definition('byse'), isNotNull);
     });
 
+    test('saves file link templates and rejects invalid ones', () async {
+      final byse = controller.state.config('byse')!;
+      expect(byse.fileUrlTemplate, 'https://byse.sx/d/{id}');
+
+      final invalid = byse.copyWith(fileUrlTemplate: 'https://byse.sx/d/');
+      final problem = controller.validate(invalid).single;
+      expect(problem.code, ConfigProblemCode.missingIdPlaceholder);
+      expect(problem.field, 'fileUrlTemplate');
+      expect(
+        const UpCloudLocalizationsEn().configProblem(problem),
+        'The file link template must contain {id}.',
+      );
+      await expectLater(
+        controller.save(invalid),
+        throwsA(isA<InvalidProviderConfigException>()),
+      );
+
+      await controller.save(
+        byse.copyWith(fileUrlTemplate: 'https://byse.example/watch/{id}'),
+      );
+      expect(controller.state.isModified('byse'), isTrue);
+      expect(
+        controller.definition('byse')!.fileUrl('a b'),
+        Uri.parse('https://byse.example/watch/a%20b'),
+      );
+      expect(
+        (await reloadRegistry()).config('byse')!.fileUrlTemplate,
+        'https://byse.example/watch/{id}',
+      );
+
+      // Without a template, Byse links to its watch page.
+      await controller.save(byse.copyWith(fileUrlTemplate: null));
+      expect(
+        controller.definition('byse')!.fileUrl('a'),
+        Uri.parse('https://byse.sx/d/a'),
+      );
+    });
+
     test('refresh reports disabled remote updates', () async {
       final result = await controller.refresh();
       expect(result.status, RegistryRefreshStatus.disabled);
@@ -101,6 +139,8 @@ void main() {
 
       expect(find.textContaining('streamhg'), findsWidgets);
       expect(find.text('Reset to default'), findsNothing);
+      expect(find.text('Driver settings'), findsNothing);
+      expect(find.text('https://hgcloud.to/{id}'), findsOneWidget);
       await tester.enterText(field('name'), 'StreamHG Pro');
       await tester.enterText(field('max-size'), '1024');
       await tester.enterText(field('extensions'), 'MP4, .mkv');
@@ -111,8 +151,8 @@ void main() {
         'https://mirror.example.com/api',
       );
       await tester.enterText(
-        field('setting-pageUrlTemplate'),
-        'https://play.example.com/v/{code}',
+        field('file-url-template'),
+        'https://play.example.com/v/{id}',
       );
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
@@ -123,10 +163,8 @@ void main() {
       expect(config.limits?.maxFileSizeMb, 1024);
       expect(config.limits?.allowedExtensions, ['mp4', 'mkv']);
       expect(config.mirrors, [Uri.parse('https://mirror.example.com/api')]);
-      expect(
-        config.settings['pageUrlTemplate'],
-        'https://play.example.com/v/{code}',
-      );
+      expect(config.fileUrlTemplate, 'https://play.example.com/v/{id}');
+      expect(config.settings, isEmpty);
       expect(registry.isModified('streamhg'), isTrue);
       expect(store.values, contains(ProviderRegistry.overridesKey));
 
@@ -134,6 +172,10 @@ void main() {
       expect(reloaded.config('streamhg')!.name, 'StreamHG Pro');
       final definition = reloaded.definition('streamhg')!;
       expect(definition.defaultLimits.maxFileSize, const DataSize.gb(1));
+      expect(
+        definition.fileUrl('abc'),
+        Uri.parse('https://play.example.com/v/abc'),
+      );
 
       // The editor now offers to reset the entry.
       expect(find.text('Reset to default'), findsOneWidget);
@@ -187,7 +229,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Byse does not require an API base URL nor driver settings.
-      expect(find.text('Page URL template'), findsNothing);
+      expect(find.text('Driver settings'), findsNothing);
       expect(find.text('API base URL (Optional)'), findsOneWidget);
       await tester.enterText(field('id'), 'byse-2');
       await tester.enterText(field('name'), 'Byse 2');
@@ -195,6 +237,73 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(registry.config('byse-2')?.driver, 'byse');
+    });
+
+    testWidgets('validates and clears the file link template', (tester) async {
+      await pumpEditor(tester, initial: registry.config('earnvids'));
+
+      expect(find.text('File link template (Optional)'), findsOneWidget);
+      expect(find.text('{id} is replaced by the file id'), findsOneWidget);
+      for (final invalid in [
+        'https://morencius.com/file/{code}',
+        'http://morencius.com/file/{id}',
+        'morencius.com/{id}',
+      ]) {
+        await tester.enterText(field('file-url-template'), invalid);
+        await tester.tap(find.text('Save'));
+        await tester.pumpAndSettle();
+        expect(
+          find.text('Enter an https URL that contains {id}'),
+          findsOneWidget,
+          reason: invalid,
+        );
+      }
+      expect(registry.isModified('earnvids'), isFalse);
+
+      // Empty: no template (xvs has no default, so files only get the
+      // links of the API).
+      await tester.enterText(field('file-url-template'), ' ');
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(find.text('Enter an https URL that contains {id}'), findsNothing);
+      expect(registry.config('earnvids')!.fileUrlTemplate, isNull);
+      expect(registry.definition('earnvids')!.fileUrl('abc'), isNull);
+      expect(registry.isModified('earnvids'), isTrue);
+    });
+
+    testWidgets('hints the default template of the driver', (tester) async {
+      await pumpEditor(tester);
+
+      await tester.tap(field('driver'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('MediaFire').last);
+      await tester.pumpAndSettle();
+
+      final decoration = tester
+          .widget<TextField>(
+            find.descendant(
+              of: field('file-url-template'),
+              matching: find.byType(TextField),
+            ),
+          )
+          .decoration!;
+      expect(decoration.hintText, mediaFireFileUrlTemplate);
+
+      await tester.enterText(field('id'), 'mf-2');
+      await tester.enterText(field('name'), 'MediaFire 2');
+      await tester.enterText(
+        field('file-url-template'),
+        'https://mf.example.com/f/{id}',
+      );
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      final config = registry.config('mf-2')!;
+      expect(config.fileUrlTemplate, 'https://mf.example.com/f/{id}');
+      expect(
+        registry.definition('mf-2')!.fileUrl('k'),
+        Uri.parse('https://mf.example.com/f/k'),
+      );
     });
 
     testWidgets('shows validation errors', (tester) async {

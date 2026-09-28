@@ -12,6 +12,9 @@ final Uri mediaFireDefaultBaseUrl = Uri.parse(
   'https://www.mediafire.com/api/1.5/',
 );
 
+/// Default file link template of MediaFire (`{id}` is the quickkey).
+const mediaFireFileUrlTemplate = 'https://www.mediafire.com/file/{id}';
+
 /// Default limits: free accounts accept files up to 5 GB (paid plans up to
 /// 50 GB; raise it in the registry or with `ProviderOptions.limits`).
 const mediaFireLimits = ProviderLimits(maxFileSize: DataSize.gb(5));
@@ -61,6 +64,11 @@ final class MediaFireDriver extends CloudDriver {
   CredentialSchema defaultCredentials(ProviderConfig config) =>
       MediaFireCredentials.schema;
 
+  /// [mediaFireFileUrlTemplate].
+  @override
+  String defaultFileUrlTemplate(ProviderConfig config) =>
+      mediaFireFileUrlTemplate;
+
   @override
   CloudProvider create(
     ProviderDefinition definition,
@@ -72,6 +80,7 @@ final class MediaFireDriver extends CloudDriver {
     info: definition.info,
     limits: definition.limitsFor(options),
     baseUrl: definition.baseUrlFor(options),
+    fileUrlTemplate: definition.fileUrlTemplate,
   );
 }
 

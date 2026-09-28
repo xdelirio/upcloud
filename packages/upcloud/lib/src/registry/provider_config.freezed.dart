@@ -24,9 +24,15 @@ mixin _$ProviderConfig {
  Uri? get iconUrl;/// Base URL the API paths are appended to.
  Uri? get apiBase;/// Alternative API base URLs tried in order when [apiBase] cannot be
 /// reached (connection errors only).
- List<Uri> get mirrors;/// Overrides the driver's default limits.
+ List<Uri> get mirrors;/// Public link of a file, with [fileIdPlaceholder] where the file id
+/// of the provider goes (e.g. `https://hgcloud.to/{id}`).
+///
+/// Drivers use the link returned by the API when there is one, then
+/// this template, then the default of the driver, if any (see
+/// `CloudDriver.defaultFileUrlTemplate`). See [fileUrl].
+ String? get fileUrlTemplate;/// Overrides the driver's default limits.
  LimitsConfig? get limits;/// Overrides the driver's default credential fields.
- List<CredentialField>? get credentials;/// Driver specific settings (e.g. `embedUrlTemplate` for `xvs`).
+ List<CredentialField>? get credentials;/// Driver specific settings (see `CloudDriver.settings`).
  Map<String, Object?> get settings;/// Names of [Capability] values the provider does not offer.
  List<String> get disabledCapabilities;/// Disabled providers are hidden from the app.
  bool get enabled;
@@ -43,20 +49,20 @@ $ProviderConfigCopyWith<ProviderConfig> get copyWith => _$ProviderConfigCopyWith
 @override
 bool operator ==(Object other) {
   final _this = this as ProviderConfig;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProviderConfig&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.driver, _this.driver) || other.driver == _this.driver)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.website, _this.website) || other.website == _this.website)&&(identical(other.iconUrl, _this.iconUrl) || other.iconUrl == _this.iconUrl)&&(identical(other.apiBase, _this.apiBase) || other.apiBase == _this.apiBase)&&const DeepCollectionEquality().equals(other.mirrors, _this.mirrors)&&(identical(other.limits, _this.limits) || other.limits == _this.limits)&&const DeepCollectionEquality().equals(other.credentials, _this.credentials)&&const DeepCollectionEquality().equals(other.settings, _this.settings)&&const DeepCollectionEquality().equals(other.disabledCapabilities, _this.disabledCapabilities)&&(identical(other.enabled, _this.enabled) || other.enabled == _this.enabled));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProviderConfig&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.driver, _this.driver) || other.driver == _this.driver)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.website, _this.website) || other.website == _this.website)&&(identical(other.iconUrl, _this.iconUrl) || other.iconUrl == _this.iconUrl)&&(identical(other.apiBase, _this.apiBase) || other.apiBase == _this.apiBase)&&const DeepCollectionEquality().equals(other.mirrors, _this.mirrors)&&(identical(other.fileUrlTemplate, _this.fileUrlTemplate) || other.fileUrlTemplate == _this.fileUrlTemplate)&&(identical(other.limits, _this.limits) || other.limits == _this.limits)&&const DeepCollectionEquality().equals(other.credentials, _this.credentials)&&const DeepCollectionEquality().equals(other.settings, _this.settings)&&const DeepCollectionEquality().equals(other.disabledCapabilities, _this.disabledCapabilities)&&(identical(other.enabled, _this.enabled) || other.enabled == _this.enabled));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as ProviderConfig;
-  return Object.hash(runtimeType,_this.id,_this.name,_this.driver,_this.description,_this.website,_this.iconUrl,_this.apiBase,const DeepCollectionEquality().hash(_this.mirrors),_this.limits,const DeepCollectionEquality().hash(_this.credentials),const DeepCollectionEquality().hash(_this.settings),const DeepCollectionEquality().hash(_this.disabledCapabilities),_this.enabled);
+  return Object.hash(runtimeType,_this.id,_this.name,_this.driver,_this.description,_this.website,_this.iconUrl,_this.apiBase,const DeepCollectionEquality().hash(_this.mirrors),_this.fileUrlTemplate,_this.limits,const DeepCollectionEquality().hash(_this.credentials),const DeepCollectionEquality().hash(_this.settings),const DeepCollectionEquality().hash(_this.disabledCapabilities),_this.enabled);
 }
 
 @override
 String toString() {
   final _this = this as ProviderConfig;
-  return 'ProviderConfig(id: ${_this.id}, name: ${_this.name}, driver: ${_this.driver}, description: ${_this.description}, website: ${_this.website}, iconUrl: ${_this.iconUrl}, apiBase: ${_this.apiBase}, mirrors: ${_this.mirrors}, limits: ${_this.limits}, credentials: ${_this.credentials}, settings: ${_this.settings}, disabledCapabilities: ${_this.disabledCapabilities}, enabled: ${_this.enabled})';
+  return 'ProviderConfig(id: ${_this.id}, name: ${_this.name}, driver: ${_this.driver}, description: ${_this.description}, website: ${_this.website}, iconUrl: ${_this.iconUrl}, apiBase: ${_this.apiBase}, mirrors: ${_this.mirrors}, fileUrlTemplate: ${_this.fileUrlTemplate}, limits: ${_this.limits}, credentials: ${_this.credentials}, settings: ${_this.settings}, disabledCapabilities: ${_this.disabledCapabilities}, enabled: ${_this.enabled})';
 }
 
 
@@ -67,7 +73,7 @@ abstract mixin class $ProviderConfigCopyWith<$Res>  {
   factory $ProviderConfigCopyWith(ProviderConfig value, $Res Function(ProviderConfig) _then) = _$ProviderConfigCopyWithImpl;
 @useResult
 $Res call({
- String id, String name, String driver, String? description, Uri? website, Uri? iconUrl, Uri? apiBase, List<Uri> mirrors, LimitsConfig? limits, List<CredentialField>? credentials, Map<String, Object?> settings, List<String> disabledCapabilities, bool enabled
+ String id, String name, String driver, String? description, Uri? website, Uri? iconUrl, Uri? apiBase, List<Uri> mirrors, String? fileUrlTemplate, LimitsConfig? limits, List<CredentialField>? credentials, Map<String, Object?> settings, List<String> disabledCapabilities, bool enabled
 });
 
 
@@ -84,7 +90,7 @@ class _$ProviderConfigCopyWithImpl<$Res>
 
 /// Create a copy of ProviderConfig
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? driver = null,Object? description = freezed,Object? website = freezed,Object? iconUrl = freezed,Object? apiBase = freezed,Object? mirrors = null,Object? limits = freezed,Object? credentials = freezed,Object? settings = null,Object? disabledCapabilities = null,Object? enabled = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? driver = null,Object? description = freezed,Object? website = freezed,Object? iconUrl = freezed,Object? apiBase = freezed,Object? mirrors = null,Object? fileUrlTemplate = freezed,Object? limits = freezed,Object? credentials = freezed,Object? settings = null,Object? disabledCapabilities = null,Object? enabled = null,}) {
   return _then(ProviderConfig(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -94,7 +100,8 @@ as String?,website: freezed == website ? _self.website : website // ignore: cast
 as Uri?,iconUrl: freezed == iconUrl ? _self.iconUrl : iconUrl // ignore: cast_nullable_to_non_nullable
 as Uri?,apiBase: freezed == apiBase ? _self.apiBase : apiBase // ignore: cast_nullable_to_non_nullable
 as Uri?,mirrors: null == mirrors ? _self.mirrors : mirrors // ignore: cast_nullable_to_non_nullable
-as List<Uri>,limits: freezed == limits ? _self.limits : limits // ignore: cast_nullable_to_non_nullable
+as List<Uri>,fileUrlTemplate: freezed == fileUrlTemplate ? _self.fileUrlTemplate : fileUrlTemplate // ignore: cast_nullable_to_non_nullable
+as String?,limits: freezed == limits ? _self.limits : limits // ignore: cast_nullable_to_non_nullable
 as LimitsConfig?,credentials: freezed == credentials ? _self.credentials : credentials // ignore: cast_nullable_to_non_nullable
 as List<CredentialField>?,settings: null == settings ? _self.settings : settings // ignore: cast_nullable_to_non_nullable
 as Map<String, Object?>,disabledCapabilities: null == disabledCapabilities ? _self.disabledCapabilities : disabledCapabilities // ignore: cast_nullable_to_non_nullable
@@ -196,10 +203,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String driver,  String? description,  Uri? website,  Uri? iconUrl,  Uri? apiBase,  List<Uri> mirrors,  LimitsConfig? limits,  List<CredentialField>? credentials,  Map<String, Object?> settings,  List<String> disabledCapabilities,  bool enabled)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String driver,  String? description,  Uri? website,  Uri? iconUrl,  Uri? apiBase,  List<Uri> mirrors,  String? fileUrlTemplate,  LimitsConfig? limits,  List<CredentialField>? credentials,  Map<String, Object?> settings,  List<String> disabledCapabilities,  bool enabled)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ProviderConfig() when $default != null:
-return $default(_that.id,_that.name,_that.driver,_that.description,_that.website,_that.iconUrl,_that.apiBase,_that.mirrors,_that.limits,_that.credentials,_that.settings,_that.disabledCapabilities,_that.enabled);case _:
+return $default(_that.id,_that.name,_that.driver,_that.description,_that.website,_that.iconUrl,_that.apiBase,_that.mirrors,_that.fileUrlTemplate,_that.limits,_that.credentials,_that.settings,_that.disabledCapabilities,_that.enabled);case _:
   return orElse();
 
 }
@@ -217,10 +224,10 @@ return $default(_that.id,_that.name,_that.driver,_that.description,_that.website
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String driver,  String? description,  Uri? website,  Uri? iconUrl,  Uri? apiBase,  List<Uri> mirrors,  LimitsConfig? limits,  List<CredentialField>? credentials,  Map<String, Object?> settings,  List<String> disabledCapabilities,  bool enabled)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String driver,  String? description,  Uri? website,  Uri? iconUrl,  Uri? apiBase,  List<Uri> mirrors,  String? fileUrlTemplate,  LimitsConfig? limits,  List<CredentialField>? credentials,  Map<String, Object?> settings,  List<String> disabledCapabilities,  bool enabled)  $default,) {final _that = this;
 switch (_that) {
 case _ProviderConfig():
-return $default(_that.id,_that.name,_that.driver,_that.description,_that.website,_that.iconUrl,_that.apiBase,_that.mirrors,_that.limits,_that.credentials,_that.settings,_that.disabledCapabilities,_that.enabled);case _:
+return $default(_that.id,_that.name,_that.driver,_that.description,_that.website,_that.iconUrl,_that.apiBase,_that.mirrors,_that.fileUrlTemplate,_that.limits,_that.credentials,_that.settings,_that.disabledCapabilities,_that.enabled);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -237,10 +244,10 @@ return $default(_that.id,_that.name,_that.driver,_that.description,_that.website
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String driver,  String? description,  Uri? website,  Uri? iconUrl,  Uri? apiBase,  List<Uri> mirrors,  LimitsConfig? limits,  List<CredentialField>? credentials,  Map<String, Object?> settings,  List<String> disabledCapabilities,  bool enabled)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String driver,  String? description,  Uri? website,  Uri? iconUrl,  Uri? apiBase,  List<Uri> mirrors,  String? fileUrlTemplate,  LimitsConfig? limits,  List<CredentialField>? credentials,  Map<String, Object?> settings,  List<String> disabledCapabilities,  bool enabled)?  $default,) {final _that = this;
 switch (_that) {
 case _ProviderConfig() when $default != null:
-return $default(_that.id,_that.name,_that.driver,_that.description,_that.website,_that.iconUrl,_that.apiBase,_that.mirrors,_that.limits,_that.credentials,_that.settings,_that.disabledCapabilities,_that.enabled);case _:
+return $default(_that.id,_that.name,_that.driver,_that.description,_that.website,_that.iconUrl,_that.apiBase,_that.mirrors,_that.fileUrlTemplate,_that.limits,_that.credentials,_that.settings,_that.disabledCapabilities,_that.enabled);case _:
   return null;
 
 }
@@ -252,7 +259,7 @@ return $default(_that.id,_that.name,_that.driver,_that.description,_that.website
 @JsonSerializable()
 
 class _ProviderConfig extends ProviderConfig {
-  const _ProviderConfig({required this.id, required this.name, required this.driver, this.description, this.website, this.iconUrl, this.apiBase,  List<Uri> mirrors = const <Uri>[], this.limits,  List<CredentialField>? credentials,  Map<String, Object?> settings = const <String, Object?>{},  List<String> disabledCapabilities = const <String>[], this.enabled = true}): _mirrors = mirrors,_credentials = credentials,_settings = settings,_disabledCapabilities = disabledCapabilities,super._();
+  const _ProviderConfig({required this.id, required this.name, required this.driver, this.description, this.website, this.iconUrl, this.apiBase,  List<Uri> mirrors = const <Uri>[], this.fileUrlTemplate, this.limits,  List<CredentialField>? credentials,  Map<String, Object?> settings = const <String, Object?>{},  List<String> disabledCapabilities = const <String>[], this.enabled = true}): _mirrors = mirrors,_credentials = credentials,_settings = settings,_disabledCapabilities = disabledCapabilities,super._();
   factory _ProviderConfig.fromJson(Map<String, dynamic> json) => _$ProviderConfigFromJson(json);
 
 /// Stable unique id (e.g. `streamhg`). Accounts reference it.
@@ -279,6 +286,13 @@ class _ProviderConfig extends ProviderConfig {
   return EqualUnmodifiableListView(_mirrors);
 }
 
+/// Public link of a file, with [fileIdPlaceholder] where the file id
+/// of the provider goes (e.g. `https://hgcloud.to/{id}`).
+///
+/// Drivers use the link returned by the API when there is one, then
+/// this template, then the default of the driver, if any (see
+/// `CloudDriver.defaultFileUrlTemplate`). See [fileUrl].
+@override final  String? fileUrlTemplate;
 /// Overrides the driver's default limits.
 @override final  LimitsConfig? limits;
 /// Overrides the driver's default credential fields.
@@ -292,9 +306,9 @@ class _ProviderConfig extends ProviderConfig {
   return EqualUnmodifiableListView(value);
 }
 
-/// Driver specific settings (e.g. `embedUrlTemplate` for `xvs`).
+/// Driver specific settings (see `CloudDriver.settings`).
  final  Map<String, Object?> _settings;
-/// Driver specific settings (e.g. `embedUrlTemplate` for `xvs`).
+/// Driver specific settings (see `CloudDriver.settings`).
 @override@JsonKey() Map<String, Object?> get settings {
   if (_settings is EqualUnmodifiableMapView) return _settings;
   // ignore: implicit_dynamic_type
@@ -326,18 +340,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProviderConfig&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.driver, driver) || other.driver == driver)&&(identical(other.description, description) || other.description == description)&&(identical(other.website, website) || other.website == website)&&(identical(other.iconUrl, iconUrl) || other.iconUrl == iconUrl)&&(identical(other.apiBase, apiBase) || other.apiBase == apiBase)&&const DeepCollectionEquality().equals(other.mirrors, _mirrors)&&(identical(other.limits, limits) || other.limits == limits)&&const DeepCollectionEquality().equals(other.credentials, _credentials)&&const DeepCollectionEquality().equals(other.settings, _settings)&&const DeepCollectionEquality().equals(other.disabledCapabilities, _disabledCapabilities)&&(identical(other.enabled, enabled) || other.enabled == enabled));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProviderConfig&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.driver, driver) || other.driver == driver)&&(identical(other.description, description) || other.description == description)&&(identical(other.website, website) || other.website == website)&&(identical(other.iconUrl, iconUrl) || other.iconUrl == iconUrl)&&(identical(other.apiBase, apiBase) || other.apiBase == apiBase)&&const DeepCollectionEquality().equals(other.mirrors, _mirrors)&&(identical(other.fileUrlTemplate, fileUrlTemplate) || other.fileUrlTemplate == fileUrlTemplate)&&(identical(other.limits, limits) || other.limits == limits)&&const DeepCollectionEquality().equals(other.credentials, _credentials)&&const DeepCollectionEquality().equals(other.settings, _settings)&&const DeepCollectionEquality().equals(other.disabledCapabilities, _disabledCapabilities)&&(identical(other.enabled, enabled) || other.enabled == enabled));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,name,driver,description,website,iconUrl,apiBase,const DeepCollectionEquality().hash(_mirrors),limits,const DeepCollectionEquality().hash(_credentials),const DeepCollectionEquality().hash(_settings),const DeepCollectionEquality().hash(_disabledCapabilities),enabled);
+    return Object.hash(runtimeType,id,name,driver,description,website,iconUrl,apiBase,const DeepCollectionEquality().hash(_mirrors),fileUrlTemplate,limits,const DeepCollectionEquality().hash(_credentials),const DeepCollectionEquality().hash(_settings),const DeepCollectionEquality().hash(_disabledCapabilities),enabled);
 }
 
 @override
 String toString() {
-    return 'ProviderConfig(id: $id, name: $name, driver: $driver, description: $description, website: $website, iconUrl: $iconUrl, apiBase: $apiBase, mirrors: $mirrors, limits: $limits, credentials: $credentials, settings: $settings, disabledCapabilities: $disabledCapabilities, enabled: $enabled)';
+    return 'ProviderConfig(id: $id, name: $name, driver: $driver, description: $description, website: $website, iconUrl: $iconUrl, apiBase: $apiBase, mirrors: $mirrors, fileUrlTemplate: $fileUrlTemplate, limits: $limits, credentials: $credentials, settings: $settings, disabledCapabilities: $disabledCapabilities, enabled: $enabled)';
 }
 
 
@@ -348,7 +362,7 @@ abstract mixin class _$ProviderConfigCopyWith<$Res> implements $ProviderConfigCo
   factory _$ProviderConfigCopyWith(_ProviderConfig value, $Res Function(_ProviderConfig) _then) = __$ProviderConfigCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name, String driver, String? description, Uri? website, Uri? iconUrl, Uri? apiBase, List<Uri> mirrors, LimitsConfig? limits, List<CredentialField>? credentials, Map<String, Object?> settings, List<String> disabledCapabilities, bool enabled
+ String id, String name, String driver, String? description, Uri? website, Uri? iconUrl, Uri? apiBase, List<Uri> mirrors, String? fileUrlTemplate, LimitsConfig? limits, List<CredentialField>? credentials, Map<String, Object?> settings, List<String> disabledCapabilities, bool enabled
 });
 
 
@@ -365,7 +379,7 @@ class __$ProviderConfigCopyWithImpl<$Res>
 
 /// Create a copy of ProviderConfig
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? driver = null,Object? description = freezed,Object? website = freezed,Object? iconUrl = freezed,Object? apiBase = freezed,Object? mirrors = null,Object? limits = freezed,Object? credentials = freezed,Object? settings = null,Object? disabledCapabilities = null,Object? enabled = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? driver = null,Object? description = freezed,Object? website = freezed,Object? iconUrl = freezed,Object? apiBase = freezed,Object? mirrors = null,Object? fileUrlTemplate = freezed,Object? limits = freezed,Object? credentials = freezed,Object? settings = null,Object? disabledCapabilities = null,Object? enabled = null,}) {
   return _then(_ProviderConfig(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -375,7 +389,8 @@ as String?,website: freezed == website ? _self.website : website // ignore: cast
 as Uri?,iconUrl: freezed == iconUrl ? _self.iconUrl : iconUrl // ignore: cast_nullable_to_non_nullable
 as Uri?,apiBase: freezed == apiBase ? _self.apiBase : apiBase // ignore: cast_nullable_to_non_nullable
 as Uri?,mirrors: null == mirrors ? _self._mirrors : mirrors // ignore: cast_nullable_to_non_nullable
-as List<Uri>,limits: freezed == limits ? _self.limits : limits // ignore: cast_nullable_to_non_nullable
+as List<Uri>,fileUrlTemplate: freezed == fileUrlTemplate ? _self.fileUrlTemplate : fileUrlTemplate // ignore: cast_nullable_to_non_nullable
+as String?,limits: freezed == limits ? _self.limits : limits // ignore: cast_nullable_to_non_nullable
 as LimitsConfig?,credentials: freezed == credentials ? _self._credentials : credentials // ignore: cast_nullable_to_non_nullable
 as List<CredentialField>?,settings: null == settings ? _self._settings : settings // ignore: cast_nullable_to_non_nullable
 as Map<String, Object?>,disabledCapabilities: null == disabledCapabilities ? _self._disabledCapabilities : disabledCapabilities // ignore: cast_nullable_to_non_nullable

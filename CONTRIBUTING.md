@@ -16,12 +16,15 @@ in their domain. Adding one does not require Dart code:
      "driver": "xvs",
      "website": "https://myhost.example",
      "apiBase": "https://myhost.example/api",
-     "limits": { "maxFileSizeMb": 4096 },
-     "settings": {
-       "pageUrlTemplate": "https://myhost.example/{code}.html"
-     }
+     "fileUrlTemplate": "https://myhost.example/{id}.html",
+     "limits": { "maxFileSizeMb": 4096 }
    }
    ```
+
+   `fileUrlTemplate` is the public link of a file: `{id}` is replaced by
+   the file id (the file code for `xvs` and `byse`, the quickkey for
+   `mediafire`). It is used when the API does not return the link; open
+   an uploaded file on the website to find it.
 
 2. Bump `updatedAt` at the top of the file.
 3. Bundle the registry into the package and run the tests:
@@ -39,6 +42,7 @@ Rules:
 - `id` is permanent: saved accounts reference it.
 - Only `https` URLs: the registry decides where API keys are sent.
 - Use `disabledCapabilities` for features the host turned off.
+- `fileUrlTemplate` must be an `https` URL that contains `{id}`.
 - Document limits you could verify (upload page, FAQ, premium page).
 
 ## Adding a driver
@@ -65,7 +69,11 @@ A driver is needed when an API differs from the existing ones.
      the response (`ProviderException.statusCode`) so `TransferManager`
      does not upload the file again.
 4. Extend `CloudDriver` (`id`, `capabilities`, `defaultLimits`,
-   `defaultCredentials`, `settings`, `create`).
+   `defaultCredentials`, `defaultFileUrlTemplate`, `settings`, `create`).
+   Files get the link returned by the API in `CloudFile.pageUrl`, or
+   `definition.fileUrl(id)` (the `fileUrlTemplate` of the entry, else the
+   default of the driver) when there is none. Providers created from code
+   without a registry entry must still work.
 5. Add it to `builtInDrivers` and export it from `lib/upcloud.dart`.
 6. Add tests with recorded JSON fixtures under `test/fixtures/<name>/` using
    `http_mock_adapter` for API calls. Test uploads by checking the request

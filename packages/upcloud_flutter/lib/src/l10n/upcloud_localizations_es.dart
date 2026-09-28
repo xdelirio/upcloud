@@ -367,6 +367,8 @@ class UpCloudLocalizationsEs extends UpCloudLocalizations {
     ConfigProblemCode.invalidUrl => 'Escribe una URL completa (https://...).',
     ConfigProblemCode.insecureUrl =>
       'Las URL deben usar https para no enviar credenciales sin cifrar.',
+    ConfigProblemCode.missingIdPlaceholder =>
+      'La plantilla del enlace del archivo debe contener {id}.',
     ConfigProblemCode.other => problem.message,
   };
 
@@ -459,6 +461,16 @@ class UpCloudLocalizationsEs extends UpCloudLocalizations {
 
   @override
   String get addMirror => 'Añadir espejo';
+
+  @override
+  String get fileUrlTemplate => 'Plantilla del enlace del archivo';
+
+  @override
+  String get fileUrlTemplateHelper => '{id} se reemplaza por el id del archivo';
+
+  @override
+  String get invalidFileUrlTemplate =>
+      'Escribe una URL https que contenga {id}';
 
   @override
   String get maxFileSizeMb => 'Tamaño máx. de archivo (MB)';

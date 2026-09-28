@@ -6,6 +6,7 @@ import 'package:upcloud/src/core/models/data_size.dart';
 import 'package:upcloud/src/core/models/ids.dart';
 import 'package:upcloud/src/core/models/remote_upload.dart';
 import 'package:upcloud/src/drivers/mediafire/mediafire_dtos.dart';
+import 'package:upcloud/src/registry/provider_config.dart';
 
 /// Folder key MediaFire accepts as an alias of the root ("My Files").
 const mediaFireRootKey = 'myfiles';
@@ -22,17 +23,15 @@ FolderId? mediaFireFolderId(String? key) {
   return FolderId(key);
 }
 
-/// Public page of a file, used when the API does not return one.
-Uri mediaFireFilePage(String quickkey) =>
-    Uri.https('www.mediafire.com', '/file/$quickkey');
-
 /// Converts MediaFire DTOs into core models.
 extension MediaFireFileMapper on MediaFireFileDto {
   /// The file as a [CloudFile].
   ///
   /// [parentKey] (the listed folder) overrides `parent_folderkey`, which
-  /// listings do not include.
-  CloudFile toCloudFile({String? parentKey}) {
+  /// listings do not include. The link is `links.normal_download`, or is
+  /// built from [fileUrlTemplate] (`{id}` is the quickkey) when the API
+  /// does not return it.
+  CloudFile toCloudFile({String? parentKey, String? fileUrlTemplate}) {
     final key = quickkey ?? '';
     final bytes = size;
     return CloudFile(
@@ -41,7 +40,9 @@ extension MediaFireFileMapper on MediaFireFileDto {
       folderId: mediaFireFolderId(parentKey ?? parentFolderKey),
       size: bytes == null ? null : DataSize(math.max(0, bytes)),
       createdAt: createdUtc ?? created,
-      pageUrl: links?.normalDownload ?? mediaFireFilePage(key),
+      pageUrl:
+          links?.normalDownload ??
+          ProviderConfig.expandFileUrl(fileUrlTemplate, key),
       views: views,
       isPublic: switch (privacy) {
         'public' => true,

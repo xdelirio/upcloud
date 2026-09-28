@@ -21,6 +21,7 @@ import 'package:upcloud/src/drivers/mediafire/mediafire_driver.dart';
 import 'package:upcloud/src/drivers/mediafire/mediafire_dtos.dart';
 import 'package:upcloud/src/drivers/mediafire/mediafire_mappers.dart';
 import 'package:upcloud/src/drivers/mediafire/mediafire_uploader.dart';
+import 'package:upcloud/src/registry/provider_config.dart';
 
 /// Credential keys and helpers for [MediaFireProvider].
 ///
@@ -107,7 +108,9 @@ final class MediaFireProvider
   /// [MediaFireCredentials]).
   ///
   /// [info], [limits] and [baseUrl] default to the values of
-  /// [mediaFireFallbackDefinition].
+  /// [mediaFireFallbackDefinition]. Files whose link the API does not
+  /// return get one built from [fileUrlTemplate] (`{id}` is the quickkey),
+  /// [mediaFireFileUrlTemplate] by default.
   /// Uploaded files are polled every [pollInterval] for up to
   /// [pollTimeout] until MediaFire processed them. [clock] replaces
   /// `DateTime.now` (tests).
@@ -119,6 +122,7 @@ final class MediaFireProvider
     ProviderInfo? info,
     ProviderLimits? limits,
     Uri? baseUrl,
+    String? fileUrlTemplate,
     Duration pollInterval = const Duration(seconds: 2),
     Duration pollTimeout = const Duration(minutes: 10),
     DateTime Function()? clock,
@@ -156,6 +160,10 @@ final class MediaFireProvider
     return MediaFireProvider._(
       info: info ?? mediaFireFallbackDefinition.info,
       limits: resolvedLimits,
+      fileUrlTemplate: switch (fileUrlTemplate?.trim()) {
+        final template? when template.isNotEmpty => template,
+        _ => mediaFireFileUrlTemplate,
+      },
       dio: dio,
       ownsDio: options.dio == null,
       api: api,
@@ -170,6 +178,7 @@ final class MediaFireProvider
   MediaFireProvider._({
     required this.info,
     required this.limits,
+    required this._fileUrlTemplate,
     required this._dio,
     required this._ownsDio,
     required this._api,
@@ -193,6 +202,10 @@ final class MediaFireProvider
 
   @override
   Set<Capability> get capabilities => mediaFireCapabilities;
+
+  /// Link of the files whose link the API does not return, `{id}` is the
+  /// quickkey.
+  final String _fileUrlTemplate;
 
   final Dio _dio;
   final bool _ownsDio;
@@ -273,7 +286,12 @@ final class MediaFireProvider
       for (var i = 0; i < files.length; i++) {
         final index = offset + i;
         if (index >= fileStart && index < fileEnd) {
-          items.add(files[i].toCloudFile(parentKey: key));
+          items.add(
+            files[i].toCloudFile(
+              parentKey: key,
+              fileUrlTemplate: _fileUrlTemplate,
+            ),
+          );
         }
       }
       moreFiles = content.moreChunks ?? false;
@@ -373,7 +391,8 @@ final class MediaFireProvider
     if (map == null) {
       throw NotFoundException('File ${id.value} not found', cause: body);
     }
-    return MediaFireFileDto.fromJson(map).toCloudFile();
+    return MediaFireFileDto.fromJson(map)
+        .toCloudFile(fileUrlTemplate: _fileUrlTemplate);
   }
 
   /// Renames the file [id]. MediaFire does not allow changing the extension.
@@ -430,7 +449,8 @@ final class MediaFireProvider
       for (final item in readList(body['results']))
         if (readMap(item) case final map?
             when readString(map['type']) == 'file')
-          MediaFireFileDto.fromJson(map).toCloudFile(),
+          MediaFireFileDto.fromJson(map)
+              .toCloudFile(fileUrlTemplate: _fileUrlTemplate),
     ];
     final perPage = math.max(1, page.perPage);
     final start = math.max(0, page.page - 1) * perPage;
@@ -518,6 +538,7 @@ final class MediaFireProvider
         name: upload.filename ?? request.headers['x-filename'] ?? quickkey,
         folderId: folder == null ? null : FolderId(folder),
         size: upload.size == null ? null : DataSize(upload.size!),
+        pageUrl: ProviderConfig.expandFileUrl(_fileUrlTemplate, quickkey),
         isPublic: isPublic,
       );
     }

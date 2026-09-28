@@ -25,6 +25,10 @@ enum ConfigProblemCode {
   /// A URL does not use HTTPS (credentials would travel in clear text).
   insecureUrl,
 
+  /// The file link template (`fileUrlTemplate`) does not contain the `{id}`
+  /// placeholder.
+  missingIdPlaceholder,
+
   /// A driver specific problem, described by the message.
   other,
 }

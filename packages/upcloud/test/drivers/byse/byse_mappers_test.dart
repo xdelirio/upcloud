@@ -4,7 +4,7 @@ import 'package:upcloud/src/drivers/byse/byse_mappers.dart';
 import 'package:upcloud/upcloud.dart';
 
 void main() {
-  final site = Uri.parse('https://byse.sx');
+  const template = 'https://byse.sx/d/{id}';
 
   group('byseApiException', () {
     UpCloudException map(String message, [int? status = 400]) =>
@@ -80,7 +80,7 @@ void main() {
         'name': 'Name',
         'fld_id': '0',
         'size': '1024',
-      }, site: site)!;
+      }, fileUrlTemplate: template)!;
 
       expect(file.id, const FileId('abc'));
       expect(file.name, 'Name');
@@ -89,9 +89,25 @@ void main() {
       expect(file.pageUrl, Uri.parse('https://byse.sx/d/abc'));
     });
 
+    test('prefers the link of the API to the template', () {
+      final json = {'file_code': 'abc', 'link': 'https://new.byse/d/abc'};
+
+      expect(
+        byseFileFromJson(json, fileUrlTemplate: template)!.pageUrl,
+        Uri.parse('https://new.byse/d/abc'),
+      );
+      expect(
+        byseFileFromJson({
+          'file_code': 'a b',
+        }, fileUrlTemplate: template)!.pageUrl,
+        Uri.parse('https://byse.sx/d/a%20b'),
+      );
+      expect(byseFileFromJson({'file_code': 'abc'})!.pageUrl, isNull);
+    });
+
     test('ignores objects without a code', () {
-      expect(byseFileFromJson({'name': 'x'}, site: site), isNull);
-      expect(byseFileFromJson({'file_code': 'undef'}, site: site), isNull);
+      expect(byseFileFromJson({'name': 'x'}), isNull);
+      expect(byseFileFromJson({'file_code': 'undef'}), isNull);
       expect(byseFolderFromJson({'name': 'x'}), isNull);
     });
 

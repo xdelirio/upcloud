@@ -26,6 +26,7 @@ _ProviderConfig _$ProviderConfigFromJson(Map<String, dynamic> json) =>
               ?.map((e) => Uri.parse(e as String))
               .toList() ??
           const <Uri>[],
+      fileUrlTemplate: json['fileUrlTemplate'] as String?,
       limits: json['limits'] == null
           ? null
           : LimitsConfig.fromJson(json['limits'] as Map<String, dynamic>),
@@ -53,6 +54,7 @@ Map<String, dynamic> _$ProviderConfigToJson(_ProviderConfig instance) =>
       'iconUrl': instance.iconUrl?.toString(),
       'apiBase': instance.apiBase?.toString(),
       'mirrors': instance.mirrors.map((e) => e.toString()).toList(),
+      'fileUrlTemplate': instance.fileUrlTemplate,
       'limits': instance.limits?.toJson(),
       'credentials': instance.credentials?.map((e) => e.toJson()).toList(),
       'settings': instance.settings,
