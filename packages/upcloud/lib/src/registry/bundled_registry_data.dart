@@ -50,7 +50,7 @@ const bundledRegistryJson = r'''
       "id": "mediafire",
       "name": "MediaFire",
       "driver": "mediafire",
-      "description": "Cloud storage and file sharing. Sign in with your email, password and the id of a MediaFire developer application.",
+      "description": "Cloud storage and file sharing. Sign in with your email and password.",
       "website": "https://www.mediafire.com",
       "iconUrl": "https://www.mediafire.com/favicon.ico",
       "apiBase": "https://www.mediafire.com/api/1.5/",

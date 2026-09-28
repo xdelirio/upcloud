@@ -39,6 +39,39 @@ void main() {
   });
 
   group('login', () {
+    test(
+      'uses the public application id with email and password only',
+      () async {
+        mf
+          ..login()
+          ..on('user/get_info', fixture('user_info'));
+        final provider = MediaFireProvider(
+          credentials: const Credentials({
+            'email': 'me@example.com',
+            'password': 'secret',
+          }),
+          options: ProviderOptions(dio: mf.dio, maxRetries: 0),
+        );
+        addTearDown(provider.close);
+
+        await provider.accountInfo();
+
+        final login = fields(mf.calls('user/get_session_token').single);
+        expect(
+          login['application_id'],
+          MediaFireCredentials.defaultApplicationId,
+        );
+        expect(
+          login['signature'],
+          mediaFireSessionSignature(
+            email: 'me@example.com',
+            password: 'secret',
+            applicationId: MediaFireCredentials.defaultApplicationId,
+          ),
+        );
+      },
+    );
+
     test('requests a version 1 token with the signature', () async {
       mf
         ..login()

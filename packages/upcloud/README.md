@@ -476,10 +476,10 @@ the default in apps.
 | `byse` | [Byse](https://byse.sx/api-docs) | – |
 | `mediafire` | [MediaFire Core API 1.5](https://www.mediafire.com/developers/core_api/1.5/getting_started/) | – |
 
-MediaFire signs in with email, password and the id of a MediaFire developer
-application (Account settings › Developers). Its uploads (`upload/simple`)
-send the file as the raw request body, with the name and size in the
-`x-filename` and `x-filesize` headers.
+MediaFire accounts sign in with email and password only (the library
+sends MediaFire's public application id that the API requires). Its uploads
+(`upload/simple`) send the file as the raw request body, with the name and
+size in the `x-filename` and `x-filesize` headers.
 
 ## Errors
 

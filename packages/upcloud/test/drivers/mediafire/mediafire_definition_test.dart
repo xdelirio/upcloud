@@ -23,13 +23,10 @@ void main() {
       final fields = {
         for (final f in mediaFire.credentialSchema.fields) f.id: f,
       };
-      expect(fields.keys, ['email', 'password', 'application_id', 'api_key']);
+      // Only email and password: the public application id is implicit.
+      expect(fields.keys, ['email', 'password']);
       expect(fields['email']!.kind, CredentialInputKind.email);
       expect(fields['password']!.kind, CredentialInputKind.secret);
-      expect(fields['application_id']!.kind, CredentialInputKind.text);
-      expect(fields['application_id']!.helpUrl, isNotNull);
-      expect(fields['api_key']!.kind, CredentialInputKind.secret);
-      expect(fields['api_key']!.isRequired, isFalse);
       expect(
         mediaFire.credentialSchema.missingFields(MediaFireHarness.credentials),
         isEmpty,

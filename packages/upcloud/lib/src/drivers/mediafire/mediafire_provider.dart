@@ -24,10 +24,11 @@ import 'package:upcloud/src/drivers/mediafire/mediafire_uploader.dart';
 
 /// Credential keys and helpers for [MediaFireProvider].
 ///
-/// MediaFire authenticates with the account email and password. An own
-/// MediaFire application (Account Settings > Developers) is optional: by
-/// default [defaultApplicationId] is used. The application secret key is
-/// only needed when that application has "Require Secret Key" enabled.
+/// MediaFire accounts sign in with email and password only: the library
+/// sends the public application [defaultApplicationId] that the API
+/// requires. Code can still pass [applicationId] (and [apiKey] when that
+/// application has "Require Secret Key" enabled) to use its own MediaFire
+/// application; they are not part of the login form.
 abstract final class MediaFireCredentials {
   /// Key of the account email.
   static const email = 'email';
@@ -50,33 +51,17 @@ abstract final class MediaFireCredentials {
     'https://www.mediafire.com/developers/getting_started/',
   );
 
-  /// Fields of the MediaFire login form.
-  static final CredentialSchema schema = CredentialSchema([
-    const CredentialField(
+  /// Fields of the MediaFire login form: email and password.
+  static const CredentialSchema schema = CredentialSchema([
+    CredentialField(
       id: email,
       label: 'Email',
       kind: CredentialInputKind.email,
     ),
-    const CredentialField(
+    CredentialField(
       id: password,
       label: 'Password',
       kind: CredentialInputKind.secret,
-    ),
-    CredentialField(
-      id: applicationId,
-      label: 'Application ID',
-      isRequired: false,
-      defaultValue: defaultApplicationId,
-      hint: 'Only to use your own app (Account Settings > Developers)',
-      helpUrl: helpUrl,
-    ),
-    CredentialField(
-      id: apiKey,
-      label: 'API key',
-      kind: CredentialInputKind.secret,
-      isRequired: false,
-      hint: 'Only if the app has "Require Secret Key" enabled',
-      helpUrl: helpUrl,
     ),
   ]);
 
