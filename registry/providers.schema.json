@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/xdelirio/upcloud/main/registry/providers.schema.json",
+  "title": "upcloud provider registry",
+  "description": "Providers available to upcloud apps. Each entry is served by a driver implemented in the upcloud package.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "providers"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "description": "Format version. Apps ignore registries newer than the version they support.",
+      "type": "integer",
+      "const": 1
+    },
+    "updatedAt": {
+      "description": "When the registry was last edited (ISO 8601). Apps keep the newest of the bundled and downloaded registries.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "providers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/provider"
+      }
+    }
+  },
+  "$defs": {
+    "provider": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "driver"
+      ],
+      "properties": {
+        "id": {
+          "description": "Stable unique id. Accounts reference it: never change it.",
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9_-]*$"
+        },
+        "name": {
+          "description": "Display name.",
+          "type": "string"
+        },
+        "driver": {
+          "description": "Driver implementing the API.",
+          "type": "string",
+          "examples": [
+            "xvs",
+            "byse",
+            "mediafire"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "website": {
+          "type": "string",
+          "format": "uri"
+        },
+        "iconUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "apiBase": {
+          "description": "Base URL the API paths are appended to. Required by the xvs driver.",
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://"
+        },
+        "mirrors": {
+          "description": "Alternative API base URLs tried in order when apiBase cannot be reached.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://"
+          }
+        },
+        "limits": {
+          "$ref": "#/$defs/limits"
+        },
+        "credentials": {
+          "description": "Overrides the login fields of the driver.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/credentialField"
+          }
+        },
+        "settings": {
+          "description": "Driver specific settings. xvs: pageUrlTemplate ({code} is the file code), used when the API does not return the file link.",
+          "type": "object"
+        },
+        "disabledCapabilities": {
+          "description": "Features the provider does not offer.",
+          "type": "array",
+          "items": {
+            "enum": [
+              "browseFolders",
+              "createFolder",
+              "renameFolder",
+              "moveFolder",
+              "deleteFolder",
+              "fileInfo",
+              "renameFile",
+              "moveFile",
+              "deleteFile",
+              "search",
+              "upload",
+              "remoteUpload",
+              "accountInfo"
+            ]
+          }
+        },
+        "enabled": {
+          "description": "Disabled providers are hidden from apps.",
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "limits": {
+      "type": "object",
+      "properties": {
+        "maxFileSizeMb": {
+          "description": "Maximum upload size in MiB. 0 removes the limit.",
+          "type": "number",
+          "minimum": 0
+        },
+        "allowedExtensions": {
+          "description": "Accepted extensions without dot. [\"*\"] accepts any file.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "maxConcurrentUploads": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "minRequestIntervalMs": {
+          "description": "Minimum milliseconds between API requests.",
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "credentialField": {
+      "type": "object",
+      "required": [
+        "id",
+        "label"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "text",
+            "secret",
+            "email",
+            "url"
+          ]
+        },
+        "isRequired": {
+          "type": "boolean",
+          "default": true
+        },
+        "hint": {
+          "type": "string"
+        },
+        "helpUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "defaultValue": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

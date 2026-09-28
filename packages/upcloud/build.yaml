@@ -1,0 +1,8 @@
+targets:
+  $default:
+    builders:
+      json_serializable:
+        options:
+          # Nested freezed objects (e.g. CloudAccount.credentials) must be
+          # serialized as maps, not as instances.
+          explicit_to_json: true

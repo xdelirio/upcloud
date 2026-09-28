@@ -1,0 +1,11 @@
+{
+  "requests_available": 2,
+  "msg": "OK",
+  "server_time": "2022-06-14 20:30:20",
+  "status": 200,
+  "result": [
+    {"remote_url": "https://xvs.tt/1.mp4", "progress": 0, "status": "PENDING", "file_code": "", "fld_id": "0"},
+    {"remote_url": "https://xvs.tt/2.mp4", "progress": 45, "status": "WORKING", "file_code": "xyayxm9ajlys", "fld_id": "7"},
+    {"remote_url": "https://xvs.tt/3.mp4", "progress": 0, "status": "ERROR", "file_code": "6bnyg8rnu11e", "fld_id": "0"}
+  ]
+}

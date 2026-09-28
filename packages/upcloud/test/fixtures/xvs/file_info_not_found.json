@@ -1,0 +1,8 @@
+{
+  "msg": "OK",
+  "server_time": "2021-08-12 21:10:07",
+  "status": 200,
+  "result": [
+    {"file_code": "missing12345", "status": 404}
+  ]
+}

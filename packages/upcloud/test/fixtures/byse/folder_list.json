@@ -1,0 +1,33 @@
+{
+  "msg": "OK",
+  "server_time": "2021-08-15 19:54:22",
+  "status": 200,
+  "result": {
+    "folders": [
+      {
+        "name": "Breaking Bad",
+        "fld_id": "16",
+        "code": "4pwb4yvp7v"
+      },
+      {
+        "name": "Travis",
+        "fld_id": "15",
+        "code": "68dth39m76"
+      }
+    ],
+    "files": [
+      {
+        "thumbnail": "http://img.xvs.tt/04nolnuszhph_t.jpg",
+        "link": "http://xvs.tt/04nolnuszhph.html",
+        "file_code": "04nolnuszhph",
+        "canplay": 1,
+        "length": "1560",
+        "views": "10",
+        "uploaded": "2021-08-20 20:37:22",
+        "public": "0",
+        "fld_id": "0",
+        "title": "Tri pljus dva 2012 SATRip"
+      }
+    ]
+  }
+}

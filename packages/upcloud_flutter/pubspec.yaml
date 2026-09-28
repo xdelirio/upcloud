@@ -1,0 +1,39 @@
+name: upcloud_flutter
+description: >-
+  Flutter widgets and controllers for upcloud: file browser, upload queue,
+  account forms and provider pickers for multiple cloud providers.
+version: 0.1.0-dev.1
+repository: https://github.com/xdelirio/upcloud
+topics:
+  - cloud
+  - storage
+  - upload
+  - widget
+  - file-manager
+
+environment:
+  sdk: ^3.13.0
+  flutter: ">=3.47.0"
+
+resolution: workspace
+
+dependencies:
+  background_downloader: ^9.6.3
+  flutter:
+    sdk: flutter
+  freezed_annotation: ^3.1.0
+  path: ^1.9.1
+  path_provider: ^2.1.6
+  shared_preferences: ^2.5.5
+  upcloud: ^0.1.0-dev.1
+
+dev_dependencies:
+  build_runner: ^2.16.1
+  flutter_test:
+    sdk: flutter
+  freezed: ^4.0.1
+  mocktail: ^1.0.5
+  shared_preferences_platform_interface: ^2.4.2
+  very_good_analysis: ^11.0.0
+
+flutter:

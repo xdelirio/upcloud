@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Upload notifications (background_downloader), in the device
+         language. -->
+    <string name="bg_downloader_cancel">Cancel</string>
+    <string name="bg_downloader_notification_channel_name">Uploads</string>
+    <string name="bg_downloader_notification_channel_description">Progress
+        of the uploads to your cloud accounts</string>
+</resources>

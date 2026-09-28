@@ -1,0 +1,51 @@
+{
+  "$schema": "./providers.schema.json",
+  "schemaVersion": 1,
+  "updatedAt": "2026-09-28T00:00:00Z",
+  "providers": [
+    {
+      "id": "streamhg",
+      "name": "StreamHG",
+      "driver": "xvs",
+      "description": "Video hosting with unlimited storage and HLS streaming.",
+      "website": "https://streamhg.com",
+      "iconUrl": "https://streamhg.com/HG1/images/favicon/favicon-32x32.png",
+      "apiBase": "https://streamhgapi.com/api"
+    },
+    {
+      "id": "earnvids",
+      "name": "EarnVids (VidHide)",
+      "driver": "xvs",
+      "description": "Video hosting formerly known as VidHide.",
+      "website": "https://earnvids.com",
+      "apiBase": "https://vidhideapi.com/api",
+      "settings": {
+        "pageUrlTemplate": "https://vidhide.com/v/{code}"
+      }
+    },
+    {
+      "id": "byse",
+      "name": "Byse",
+      "driver": "byse",
+      "description": "Video hosting with remote uploads.",
+      "website": "https://byse.sx",
+      "iconUrl": "https://filemoon.sx/assets/images/logo.svg",
+      "apiBase": "https://api.byse.sx",
+      "limits": {
+        "maxFileSizeMb": 2048
+      }
+    },
+    {
+      "id": "mediafire",
+      "name": "MediaFire",
+      "driver": "mediafire",
+      "description": "Cloud storage and file sharing. Sign in with your email, password and the id of a MediaFire developer application.",
+      "website": "https://www.mediafire.com",
+      "iconUrl": "https://www.mediafire.com/favicon.ico",
+      "apiBase": "https://www.mediafire.com/api/1.5/",
+      "limits": {
+        "maxFileSizeMb": 5120
+      }
+    }
+  ]
+}

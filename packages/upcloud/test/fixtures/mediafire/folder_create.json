@@ -1,0 +1,21 @@
+{
+  "response": {
+    "action": "folder/create",
+    "parent_folderkey": "rfoh06y8w3amg",
+    "name": "Test 101",
+    "description": "",
+    "created": "2015-05-11 13:13:17",
+    "created_utc": "2015-05-11T18:13:17Z",
+    "privacy": "public",
+    "file_count": "0",
+    "folder_count": "0",
+    "revision": "162727",
+    "dropbox_enabled": "no",
+    "flag": "2",
+    "upload_key": "ba860a9208913ce508d8a638a7d1bbf7cf3f8198e07a7426ce9353ceb18462a4",
+    "folder_key": "ih5qo0ia9lhsy",
+    "result": "Success",
+    "current_api_version": "1.5",
+    "new_device_revision": "162727"
+  }
+}

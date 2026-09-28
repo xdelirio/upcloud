@@ -1,0 +1,10 @@
+{
+  "response": {
+    "action": "user/get_session_token",
+    "session_token": "d590e7ddf92917a14f2ebe1c6767a160d3cdf5f725d3d274215378c75ba52852e0800976f7f88f53446dbad342ebefe85c75d647c5f3ee3e82724ecf1dbf23695e7a26f2a8f600e0",
+    "ekey": "cf78ef53165d4178d0e054c0971bd7b4",
+    "pkey": "b45743b5a6",
+    "result": "Success",
+    "current_api_version": "1.5"
+  }
+}

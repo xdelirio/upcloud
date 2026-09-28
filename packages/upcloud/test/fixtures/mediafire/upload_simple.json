@@ -1,0 +1,9 @@
+{
+  "response": {
+    "action": "upload/simple",
+    "doupload": {"result": "0", "key": "068n326bzaw"},
+    "server": "live",
+    "result": "Success",
+    "current_api_version": "1.5"
+  }
+}

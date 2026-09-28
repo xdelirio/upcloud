@@ -1,0 +1,13 @@
+{
+  "response": {
+    "action": "upload/poll_upload",
+    "doupload": {
+      "result": "0",
+      "status": "17",
+      "description": "Upload is in progress",
+      "fileerror": ""
+    },
+    "result": "Success",
+    "current_api_version": "1.5"
+  }
+}

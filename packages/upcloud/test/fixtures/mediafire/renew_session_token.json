@@ -1,0 +1,8 @@
+{
+  "response": {
+    "action": "user/renew_session_token",
+    "session_token": "7d31c37ae57f08951f7e50e69eaf81d2a1a8c047aabc945272e838f82e3384f4ebfe89453f888b9c3a7a777667ada551c21604493d9863e61db0593ad06a45cf2d46f016771732a4",
+    "result": "Success",
+    "current_api_version": "1.5"
+  }
+}

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="bg_downloader_cancel">Cancelar</string>
+    <string name="bg_downloader_notification_channel_name">Subidas</string>
+    <string name="bg_downloader_notification_channel_description">Progreso
+        de las subidas a tus cuentas en la nube</string>
+</resources>

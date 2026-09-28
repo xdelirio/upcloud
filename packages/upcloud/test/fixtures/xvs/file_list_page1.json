@@ -1,0 +1,36 @@
+{
+  "msg": "OK",
+  "server_time": "2021-08-13 20:35:18",
+  "status": 200,
+  "result": {
+    "files": [
+      {
+        "thumbnail": "http://img.xvs.tt/fb5asfuj2snh_t.jpg",
+        "link": "http://xvs.tt/fb5asfuj2snh.html",
+        "file_code": "fb5asfuj2snh",
+        "canplay": 1,
+        "length": "60",
+        "views": "0",
+        "uploaded": "2021-07-12 20:56:54",
+        "public": "0",
+        "fld_id": "0",
+        "title": "Test 123"
+      },
+      {
+        "thumbnail": "http://img.xvs.tt/gzky98gfg6hn_t.jpg",
+        "link": "http://xvs.tt/gzky98gfg6hn.html",
+        "file_code": "gzky98gfg6hn",
+        "canplay": 0,
+        "length": "0",
+        "views": "12",
+        "uploaded": "2021-07-13 10:00:00",
+        "public": "1",
+        "fld_id": "0",
+        "title": "Still encoding"
+      }
+    ],
+    "results_total": 3,
+    "pages": 2,
+    "results": 2
+  }
+}

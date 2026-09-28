@@ -1,0 +1,65 @@
+{
+  "response": {
+    "action": "upload/get_web_uploads",
+    "web_uploads": [
+      {
+        "uploadkey": "93do9m68rx",
+        "active": "no",
+        "quickkey": "qjffa4pk82zydy3",
+        "filename": "007.zip",
+        "created": "2015-02-16 17:30:40",
+        "status_code": "99",
+        "status": "Transfer complete",
+        "error_status": "0",
+        "url": "http://download.thinkbroadband.com/20MB.zip",
+        "eta": "Transfer completed",
+        "size": "20971520",
+        "percentage": "100"
+      },
+      {
+        "uploadkey": "2xpae4meae",
+        "active": "yes",
+        "quickkey": "",
+        "filename": "008.zip",
+        "created": "2015-02-16 17:38:06",
+        "status_code": "3",
+        "status": "Transfer is in progress",
+        "error_status": "0",
+        "url": "http://download.thinkbroadband.com/200MB.zip",
+        "eta": "4 seconds",
+        "size": "209715200",
+        "percentage": "84"
+      },
+      {
+        "uploadkey": "o1ld6w6ga1",
+        "active": "no",
+        "quickkey": "",
+        "filename": "002.jpg",
+        "created": "2015-02-16 17:13:21",
+        "status_code": "1",
+        "status": "Waiting to start",
+        "error_status": "0",
+        "url": "http://example.com/huge.jpg",
+        "eta": "n/a",
+        "size": "0",
+        "percentage": "1"
+      },
+      {
+        "uploadkey": "zz9failed1",
+        "active": "no",
+        "quickkey": "",
+        "filename": "missing.bin",
+        "created": "2015-02-16 17:13:21",
+        "status_code": "99",
+        "status": "Transfer complete",
+        "error_status": "16",
+        "url": "http://example.com/missing.bin",
+        "eta": "n/a",
+        "size": "0",
+        "percentage": "0"
+      }
+    ],
+    "result": "Success",
+    "current_api_version": "1.5"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "msg": "OK",
+  "server_time": "2021-08-13 20:35:18",
+  "status": 200,
+  "result": {
+    "files": [
+      {
+        "thumbnail": "http://img.xvs.tt/u9150wqzvhxj_t.jpg",
+        "link": "http://xvs.tt/u9150wqzvhxj.html",
+        "file_code": "u9150wqzvhxj",
+        "canplay": 1,
+        "length": "3600",
+        "views": "7",
+        "uploaded": "2021-07-14 08:15:00",
+        "public": "1",
+        "fld_id": "0",
+        "title": "Last one"
+      }
+    ],
+    "results_total": 3,
+    "pages": 2,
+    "results": 1
+  }
+}

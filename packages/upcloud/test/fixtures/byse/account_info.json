@@ -1,0 +1,12 @@
+{
+  "msg": "OK",
+  "server_time": "2017-08-11 04:30:07",
+  "status": 200,
+  "result": {
+    "email": "user@example.com",
+    "balance": "0.00000",
+    "storage_used": "24186265",
+    "storage_left": 128824832615,
+    "premim_expire": "2015-10-24 21:00:00"
+  }
+}

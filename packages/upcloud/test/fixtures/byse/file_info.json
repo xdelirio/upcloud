@@ -1,0 +1,21 @@
+{
+  "msg": "OK",
+  "server_time": "2017-08-11 04:28:53",
+  "status": 200,
+  "result": [
+    {
+      "status": 200,
+      "file_code": "gi4o0tlro01u",
+      "name": "4K Time Lapse in the EOS 6D Mark II",
+      "canplay": 1,
+      "views_started": "1",
+      "views": "0",
+      "length": "20",
+      "uploaded": "2017-08-10 05:07:17"
+    },
+    {
+      "status": 404,
+      "file_code": "gi4o0tlro012"
+    }
+  ]
+}

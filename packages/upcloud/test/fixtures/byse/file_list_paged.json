@@ -1,0 +1,35 @@
+{
+  "msg": "OK",
+  "server_time": "2021-08-15 19:54:22",
+  "status": 200,
+  "result": {
+    "results_total": "3",
+    "pages": 2,
+    "results": 2,
+    "files": [
+      {
+        "thumbnail": "https://img.byse.sx/04nolnuszhph_t.jpg",
+        "link": "https://byse.sx/d/04nolnuszhph",
+        "file_code": "04nolnuszhph",
+        "canplay": 1,
+        "length": "1560",
+        "views": "10",
+        "uploaded": "2021-08-20 20:37:22",
+        "public": "0",
+        "fld_id": "16",
+        "title": "Tri pljus dva 2012 SATRip"
+      },
+      {
+        "thumbnail": "https://img.byse.sx/9k2lq0zx81ab_t.jpg",
+        "file_code": "9k2lq0zx81ab",
+        "canplay": 0,
+        "length": "0",
+        "views": "0",
+        "uploaded": "2021-08-21 10:00:00",
+        "public": "1",
+        "fld_id": "16",
+        "title": "Encoding video"
+      }
+    ]
+  }
+}

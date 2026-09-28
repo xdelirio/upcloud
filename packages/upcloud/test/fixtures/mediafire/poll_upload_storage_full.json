@@ -1,0 +1,13 @@
+{
+  "response": {
+    "action": "upload/poll_upload",
+    "doupload": {
+      "result": "0",
+      "status": "99",
+      "description": "No more requests for this key",
+      "fileerror": "15"
+    },
+    "result": "Success",
+    "current_api_version": "1.5"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "msg": "OK",
+  "server_time": "2021-09-11 04:30:07",
+  "status": 200,
+  "result": {
+    "files_total": "31",
+    "storage_left": 1288483337,
+    "login": "megauploader21",
+    "email": "megauploader21@example.com",
+    "premium_expire": "2022-10-15 04:46:59",
+    "balance": "108.00000",
+    "premium": 1,
+    "storage_used": "685101"
+  }
+}

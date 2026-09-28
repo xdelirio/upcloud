@@ -1,0 +1,24 @@
+{
+  "msg": "OK",
+  "server_time": "2024-03-02 11:20:18",
+  "status": 200,
+  "result": {
+    "files": [
+      {
+        "thumbnail": "https://vidhide.com/lscc79sittad_t.jpg",
+        "link": "https://vidhide.com/v/lscc79sittad",
+        "file_code": "lscc79sittad",
+        "canplay": "1",
+        "length": 1560,
+        "views": 3,
+        "uploaded": "2024-03-01 09:00:00",
+        "public": 1,
+        "fld_id": 25,
+        "title": "Iron man trailer"
+      }
+    ],
+    "results_total": "1",
+    "pages": "1",
+    "results": "1"
+  }
+}

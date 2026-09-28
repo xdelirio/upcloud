@@ -1,0 +1,33 @@
+{
+  "response": {
+    "action": "user/get_info",
+    "user_info": {
+      "ekey": "c15010cf37f8c8332cf67f78fbe41199",
+      "email": "t03@example.com",
+      "first_name": "Test",
+      "last_name": "03",
+      "display_name": "Test 03",
+      "gender": "Prefer not to answer",
+      "birth_date": "0000-00-00",
+      "location": "",
+      "website": "",
+      "premium": "no",
+      "bandwidth": "3221211543406",
+      "created": "2014-09-16",
+      "validated": "yes",
+      "tos_accepted": "1.5",
+      "used_storage_size": "234364151",
+      "base_storage": "10739515392",
+      "bonus_storage": "1073741824",
+      "storage_limit": "11813257216",
+      "storage_limit_exceeded": "no",
+      "options": "12582912",
+      "facebook": {"linked": "no"},
+      "gmail": {"linked": "no"},
+      "twitter": {"linked": "no"},
+      "one_time_key_request_max_count": "10"
+    },
+    "result": "Success",
+    "current_api_version": "1.5"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "response": {
+    "action": "upload/poll_upload",
+    "doupload": {
+      "result": "0",
+      "status": "99",
+      "description": "No more requests for this key",
+      "fileerror": "",
+      "quickkey": "7a8kc7354q939b6",
+      "hash": "6c179f21e6f62b629055d8ab40f454ed02e48b68563913473b857d3638e23b28",
+      "filename": "test 001.txt",
+      "size": "11",
+      "created": "2015-03-25 16:13:43",
+      "revision": "162900",
+      "created_utc": "2015-03-25T21:13:43Z"
+    },
+    "result": "Success",
+    "current_api_version": "1.5"
+  }
+}

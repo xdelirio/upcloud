@@ -1,0 +1,33 @@
+{
+  "response": {
+    "action": "file/get_info",
+    "file_info": {
+      "quickkey": "7a8kc7354q939b6",
+      "filename": "test 001.txt",
+      "ready": "yes",
+      "created": "2015-05-07 11:07:05",
+      "downloads": "0",
+      "description": "",
+      "size": "11",
+      "privacy": "public",
+      "password_protected": "no",
+      "hash": "6c179f21e6f62b629055d8ab40f454ed02e48b68563913473b857d3638e23b28",
+      "filetype": "document",
+      "mimetype": "text/plain",
+      "owner_name": "Clint",
+      "flag": "22",
+      "parent_folderkey": "rfoh06y8w3amg",
+      "revision": "162691",
+      "view": "1",
+      "edit": "1",
+      "links": {
+        "view": "http://www.mediafire.com/view/7a8kc7354q939b6/test_001.txt",
+        "normal_download": "http://www.mediafire.com/file/7a8kc7354q939b6/test_001.txt",
+        "direct_download": "http://download1644.mediafire.com/m41sas9l3big/7a8kc7354q939b6/test+001.txt"
+      },
+      "created_utc": "2015-05-07T16:07:05Z"
+    },
+    "result": "Success",
+    "current_api_version": "1.5"
+  }
+}

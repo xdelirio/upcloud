@@ -1,0 +1,56 @@
+{
+  "response": {
+    "action": "folder/get_content",
+    "asynchronous": "no",
+    "folder_content": {
+      "chunk_size": "100",
+      "content_type": "files",
+      "chunk_number": "1",
+      "files": [
+        {
+          "quickkey": "98dc3nr8e2d3hdp",
+          "hash": "fadbaec0558fd534f65bf2fbcf85eb6b6a8bdba5b33b07ba3290363cc6ff46cd",
+          "filename": "Getting Started with Images.pdf",
+          "description": "",
+          "size": "11721254",
+          "privacy": "public",
+          "created": "2014-09-16 15:00:47",
+          "password_protected": "no",
+          "mimetype": "application/pdf",
+          "filetype": "document",
+          "view": "1",
+          "edit": "0",
+          "revision": "1173",
+          "flag": "4",
+          "downloads": "3",
+          "views": "7",
+          "links": {
+            "view": "http://www.mediafire.com/view/98dc3nr8e2d3hdp/Getting_Started_with_Images.pdf",
+            "normal_download": "http://www.mediafire.com/file/98dc3nr8e2d3hdp/Getting_Started_with_Images.pdf"
+          },
+          "created_utc": "2014-09-16T20:00:47Z"
+        },
+        {
+          "quickkey": "ppdbpa58mq0lhym",
+          "hash": "b50a655b35c02eaf5683c255d8f6e938b783e164c7b227ce397639ecdc221093",
+          "filename": "Sample - The M Machine - Tiny Anthem.mp4",
+          "description": "Music video",
+          "size": "36431235",
+          "privacy": "private",
+          "created": "2014-09-16 15:00:48",
+          "password_protected": "no",
+          "mimetype": "video/mp4",
+          "filetype": "video",
+          "view": "5",
+          "edit": "0",
+          "revision": "1133",
+          "flag": "4",
+          "created_utc": "2014-09-16T20:00:48Z"
+        }
+      ],
+      "more_chunks": "no"
+    },
+    "result": "Success",
+    "current_api_version": "1.5"
+  }
+}

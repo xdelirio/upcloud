@@ -1,0 +1,49 @@
+{
+  "response": {
+    "action": "folder/search",
+    "results_count": "3",
+    "results": [
+      {
+        "type": "folder",
+        "folderkey": "b5brfb1s16fr0",
+        "name": "Sample folder",
+        "parent_folderkey": "myfiles",
+        "parent_name": "myfiles",
+        "revision": "162725",
+        "privacy": "public",
+        "relevancy": "100"
+      },
+      {
+        "type": "file",
+        "quickkey": "eu9fs1setas5a05",
+        "filename": "Sample - Golden Gate HDR.jpg",
+        "parent_folderkey": "b5brfb1s16fr0",
+        "parent_name": "Test 002",
+        "created": "2015-04-30 19:30:55",
+        "revision": "162699",
+        "size": "8875464",
+        "description": "",
+        "privacy": "public",
+        "password_protected": "no",
+        "mimetype": "image/jpeg",
+        "filetype": "image",
+        "hash": "09096fef3fb73c309be45bd93a799f804dc343a54b25d8063cbf3980b27e9eb6",
+        "relevancy": "100",
+        "created_utc": "2015-05-01T00:30:55Z"
+      },
+      {
+        "type": "file",
+        "quickkey": "lx8fb6gpizuuv9o",
+        "filename": "sample.zip",
+        "parent_folderkey": "myfiles",
+        "created": "2015-04-30 19:30:55",
+        "size": "1024",
+        "privacy": "private",
+        "relevancy": "80",
+        "created_utc": "2015-05-01T00:30:55Z"
+      }
+    ],
+    "result": "Success",
+    "current_api_version": "1.5"
+  }
+}
