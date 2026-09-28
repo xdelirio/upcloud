@@ -5,19 +5,29 @@ import '../../support/bundled_providers.dart';
 
 void main() {
   group('XVS registry entries', () {
+    // StreamHG and EarnVids answer "Invalid operation" to file/delete and
+    // folder/delete.
+    final withoutDelete = xvsCapabilities.difference({
+      Capability.deleteFile,
+      Capability.deleteFolder,
+    });
     final expected = {
-      xVideoSharing: ('xvideosharing', 'https://xvideosharing.com/api'),
-      streamHg: ('streamhg', 'https://streamhgapi.com/api'),
-      earnVids: ('earnvids', 'https://earnvidsapi.com/api'),
+      xVideoSharing: (
+        'xvideosharing',
+        'https://xvideosharing.com/api',
+        xvsCapabilities,
+      ),
+      streamHg: ('streamhg', 'https://streamhgapi.com/api', withoutDelete),
+      earnVids: ('earnvids', 'https://earnvidsapi.com/api', withoutDelete),
     };
 
-    for (final MapEntry(key: definition, value: (id, apiBase))
+    for (final MapEntry(key: definition, value: (id, apiBase, capabilities))
         in expected.entries) {
       test('$id uses the xvs driver', () {
         expect(definition.id, id);
         expect(definition.info.driver, XvsDriver.driverId);
         expect(definition.defaultBaseUrl, Uri.parse(apiBase));
-        expect(definition.capabilities, xvsCapabilities);
+        expect(definition.capabilities, capabilities);
         expect(
           definition.defaultLimits.allowedExtensions,
           ProviderLimits.videoExtensions,
@@ -37,14 +47,36 @@ void main() {
 
   group('XvsDriver', () {
     test('creates providers with every capability', () {
-      final provider = streamHg.create(Credentials.apiKey('k'));
+      final provider = xVideoSharing.create(Credentials.apiKey('k'));
       addTearDown(provider.close);
 
       expect(provider, isA<XvsProvider>());
       expect(provider.capabilities, xvsCapabilities);
-      expect(provider.info.name, 'StreamHG');
-      expect((provider as XvsProvider).baseUrl, streamHg.defaultBaseUrl);
+      expect(provider.info.name, 'XVideoSharing');
+      expect((provider as XvsProvider).baseUrl, xVideoSharing.defaultBaseUrl);
     });
+
+    for (final definition in [streamHg, earnVids]) {
+      test('${definition.id} cannot delete files or folders', () async {
+        final provider =
+            definition.create(Credentials.apiKey('k')) as XvsProvider;
+        addTearDown(provider.close);
+
+        expect(provider.info.name, definition.info.name);
+        expect(provider.supports(Capability.deleteFile), isFalse);
+        expect(provider.supports(Capability.deleteFolder), isFalse);
+        expect(provider.supports(Capability.renameFile), isTrue);
+        // Rejected before any request is sent.
+        await expectLater(
+          provider.deleteFile(const FileId('abc')),
+          throwsA(isA<UnsupportedOperationException>()),
+        );
+        await expectLater(
+          provider.deleteFolder(const FolderId('1')),
+          throwsA(isA<UnsupportedOperationException>()),
+        );
+      });
+    }
 
     test('honours base URL and limits overrides', () {
       const limits = ProviderLimits(maxFileSize: DataSize.gb(50));

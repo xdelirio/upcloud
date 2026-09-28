@@ -73,6 +73,87 @@ A driver is needed when an API differs from the existing ones.
    `completeUpload`. Tests must not hit the network.
 7. Add the provider entries to `registry/providers.json`.
 
+## Live tests
+
+The normal tests never hit the network. Tests tagged `live` call the real
+APIs of the bundled providers with your accounts, to check that the
+drivers still match them. They are skipped by default
+(`packages/upcloud/dart_test.yaml`).
+
+1. Put the credentials in a `.env` file at the root of the repository.
+   It is git-ignored: never commit it, paste it or print it. Providers
+   without credentials are skipped. Environment variables win over the
+   file.
+
+   ```sh
+   STREAMHG_API_KEY=<StreamHG API key>
+   EARNVIDS_API_KEY=<EarnVids API key>
+   BYSE_API_KEY=<Byse API key>
+   MEDIAFIRE_EMAIL=<MediaFire account email>
+   MEDIAFIRE_PASSWORD=<MediaFire account password>
+   # Optional: your own MediaFire application instead of the public one.
+   MEDIAFIRE_APPLICATION_ID=<application id>
+   MEDIAFIRE_API_KEY=<application secret key>
+   ```
+
+2. Run them from `packages/upcloud`:
+
+   ```sh
+   dart test -P live                    # every provider with credentials
+   dart test -t live --run-skipped      # same thing, without the preset
+   UPCLOUD_LIVE_PROVIDERS=streamhg,byse dart test -P live
+   UPCLOUD_LIVE_VERBOSE=1 dart test -P live    # log HTTP requests
+   ```
+
+`test/live/live_providers_test.dart` checks, for each provider, the
+account info, the root listing, error mapping (invalid API key, unknown
+file), `resolveFolderPath('upcloud-live-test/<run id>')` (created once,
+found again by a new session without duplicates) and an upload of
+`test/fixtures/live/sample.mp4` through `UpCloud.upload` with the
+`dart:io` executor of the example (returned file, `fileInfo`, listing).
+Then it uploads 2 files to 2 providers with `uploadBatch` into the same
+path, preferring providers that can delete them. Every copy of the sample
+gets a unique trailing MP4 `free` box, as hosts may deduplicate identical
+files. The sample lasts 10 seconds: XVS hosts reject shorter videos
+("video is too short").
+
+Cleanup deletes what the run created where the API allows it (MediaFire
+moves it to its trash). StreamHG, EarnVids and Byse cannot delete files
+or folders through their APIs: every run leaves its folder
+`upcloud-live-test/<run id>` with the uploaded files (named
+`upcloud-live-<run id>-...`), listed at the end of the output. Delete
+them from the websites.
+
+MediaFire signs in once per run, without retries: repeated failed
+sign-ins can lock the account. When the sign-in fails, the test reports
+the MediaFire error code and skips the rest of the MediaFire tests.
+
+The output never contains credentials: the tests scrub every value of
+the `.env` file from their logs and errors, and URLs are logged with
+`redactUri`. Keep it that way when you add tests.
+
+### Flutter executor
+
+`packages/upcloud_flutter/example/integration_test/live_upload_test.dart`
+uploads a small embedded video through `BackgroundUploadExecutor` to the
+first provider with credentials (StreamHG, EarnVids, Byse, then
+MediaFire; `UPCLOUD_LIVE_PROVIDERS` restricts the choice), and deletes it
+when the API allows it. It is tagged `live` and skipped by the example's
+`dart_test.yaml`, so `flutter test integration_test` does not even launch
+it (macOS cannot start the app twice in one run). Run it on its own, with
+the credentials passed as defines:
+
+```sh
+cd packages/upcloud_flutter/example
+flutter test integration_test/live_upload_test.dart -d macos \
+  --run-skipped --dart-define-from-file=../../../.env
+flutter clean
+```
+
+Defines are compiled into the app: `flutter clean` removes the build
+artifacts that contain them (`build/`, `.dart_tool/`,
+`macos/Flutter/ephemeral/`). Without defines the test skips itself.
+
 ## Code style
 
 - Everything in the repository is written in English.

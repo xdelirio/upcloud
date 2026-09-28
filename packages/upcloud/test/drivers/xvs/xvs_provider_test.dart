@@ -457,6 +457,22 @@ void main() {
       );
     });
 
+    test('removes the code prefix of upload server errors', () async {
+      final request = await prepare();
+
+      final error = await h.provider
+          .completeUpload(request, reply(fixture('upload_result_too_short')))
+          .then<Object?>((_) => null, onError: (Object e) => e);
+
+      expect(
+        error,
+        isA<ProviderException>()
+            .having((e) => e.message, 'message', 'video is too short')
+            .having((e) => e.statusCode, 'status', 200),
+      );
+      expect(TransferManager.isRetryable(error! as ProviderException), isFalse);
+    });
+
     test('errors of accepted uploads are not retried', () async {
       final request = await prepare();
 
@@ -667,6 +683,28 @@ void main() {
       await expectLater(
         h.provider.deleteFile(const FileId('nope')),
         throwsA(isA<NotFoundException>()),
+      );
+    });
+
+    test('maps "Invalid operation" to UnsupportedOperationException', () async {
+      // What StreamHG and EarnVids answer to file/delete and folder/delete.
+      h
+        ..onGet('file/delete', fixture('invalid_operation'))
+        ..onGet('folder/delete', fixture('invalid_operation'));
+
+      await expectLater(
+        h.provider.deleteFile(const FileId('abc')),
+        throwsA(
+          isA<UnsupportedOperationException>().having(
+            (e) => e.message,
+            'message',
+            'Invalid operation',
+          ),
+        ),
+      );
+      await expectLater(
+        h.provider.deleteFolder(const FolderId('1')),
+        throwsA(isA<UnsupportedOperationException>()),
       );
     });
 

@@ -1,0 +1,26 @@
+{
+  "result": [
+    {
+      "file_length": 10,
+      "file_fld_id": 402298,
+      "file_adult": 0,
+      "file_last_download": "2026-09-15 16:26:58",
+      "audio_tracks": [],
+      "file_title": "Big Buck Bunny 1080 10s 1MB",
+      "canplay": 1,
+      "file_premium_only": 0,
+      "file_views": 3,
+      "cat_id": 0,
+      "file_views_full": 0,
+      "status": 200,
+      "file_public": 0,
+      "tags": "",
+      "file_created": "2026-09-15 16:26:58",
+      "player_img": "https://videothumbs.me/v5cp8e6rhvvc.jpg",
+      "file_code": "v5cp8e6rhvvc"
+    }
+  ],
+  "server_time": "2026-09-28 02:43:05",
+  "status": 200,
+  "msg": "OK"
+}

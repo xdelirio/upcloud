@@ -6,7 +6,7 @@ const bundledRegistryJson = r'''
 {
   "$schema": "./providers.schema.json",
   "schemaVersion": 1,
-  "updatedAt": "2026-09-28T02:00:00Z",
+  "updatedAt": "2026-09-28T03:00:00Z",
   "providers": [
     {
       "id": "streamhg",
@@ -16,6 +16,7 @@ const bundledRegistryJson = r'''
       "website": "https://streamhg.com",
       "iconUrl": "https://streamhg.com/HG1/images/favicon/favicon-32x32.png",
       "apiBase": "https://streamhgapi.com/api",
+      "disabledCapabilities": ["deleteFile", "deleteFolder"],
       "settings": {
         "pageUrlTemplate": "https://hgcloud.to/{code}"
       }
@@ -28,6 +29,7 @@ const bundledRegistryJson = r'''
       "website": "https://earnvids.com",
       "apiBase": "https://earnvidsapi.com/api",
       "mirrors": ["https://vidhideapi.com/api"],
+      "disabledCapabilities": ["deleteFile", "deleteFolder"],
       "settings": {
         "pageUrlTemplate": "https://morencius.com/file/{code}"
       }

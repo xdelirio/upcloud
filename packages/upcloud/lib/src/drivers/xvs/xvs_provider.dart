@@ -428,7 +428,13 @@ final class XvsProvider
     if (status != null &&
         status.toUpperCase() != 'OK' &&
         readInt(status) != 200) {
-      throw xvsError(status: httpStatus, message: status, response: envelope);
+      // Upload servers prefix errors with codes: `0:0:0:video is too short`.
+      final message = status.replaceFirst(RegExp(r'^\d+:\d+:\d+:\s*'), '');
+      throw xvsError(
+        status: httpStatus,
+        message: message.isEmpty ? status : message,
+        response: envelope,
+      );
     }
     if (dto.code == null) {
       throw ProviderException(

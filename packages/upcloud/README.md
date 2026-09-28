@@ -31,12 +31,15 @@ video hosting providers.
 
 | Provider | Driver | Browse | Manage | Upload | Remote upload | Notes |
 | --- | --- | :-: | :-: | :-: | :-: | --- |
-| StreamHG | `xvs` | ✅ | ✅ | ✅ | ✅ | Video files only |
-| EarnVids (VidHide) | `xvs` | ✅ | ✅ | ✅ | ✅ | Video files only |
-| Byse | `byse` | ✅ | Partial¹ | ✅ | ✅ | 2 GB, video files |
+| StreamHG | `xvs` | ✅ | Partial¹ | ✅ | ✅ | Video files only |
+| EarnVids (VidHide) | `xvs` | ✅ | Partial¹ | ✅ | ✅ | Video files only |
+| Byse | `byse` | ✅ | Partial² | ✅ | ✅ | 2 GB, video files |
 | MediaFire | `mediafire` | ✅ | ✅ | ✅ | ✅ | 5 GB (free plans) |
 
-¹ Byse can create folders and move files, but not rename or delete them.
+¹ StreamHG and EarnVids can create, rename and move files and folders, but
+their APIs cannot delete them (`deleteFile` and `deleteFolder` are
+disabled in the registry).
+² Byse can create folders and move files, but not rename or delete them.
 
 Any host running the XVideoSharing script can be added with a registry entry
 (see [Adding a provider](#adding-a-provider)).

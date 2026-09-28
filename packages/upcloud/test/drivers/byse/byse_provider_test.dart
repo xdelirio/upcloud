@@ -272,6 +272,33 @@ void main() {
       expect(file.isReady, isTrue);
     });
 
+    test('fileInfo reads the file_ fields of the live API', () async {
+      // Recorded from api.byse.sx: unlike the documentation, file/info
+      // prefixes the fields with `file_`.
+      h.onGet(
+        'file/info',
+        byseFixture('file_info_live.json'),
+        query: {'file_code': 'v5cp8e6rhvvc'},
+      );
+
+      final file = await provider.fileInfo(const FileId('v5cp8e6rhvvc'));
+
+      expect(file.id, const FileId('v5cp8e6rhvvc'));
+      expect(file.name, 'Big Buck Bunny 1080 10s 1MB');
+      expect(file.folderId, const FolderId('402298'));
+      expect(file.duration, const Duration(seconds: 10));
+      expect(file.views, 3);
+      expect(file.createdAt, DateTime.utc(2026, 9, 15, 16, 26, 58));
+      expect(file.isPublic, isFalse);
+      expect(file.isReady, isTrue);
+      expect(
+        file.thumbnailUrl,
+        Uri.parse('https://videothumbs.me/v5cp8e6rhvvc.jpg'),
+      );
+      expect(file.pageUrl, Uri.parse('https://byse.sx/d/v5cp8e6rhvvc'));
+      expect(file.extra, isNot(contains('file_title')));
+    });
+
     test('fileInfo throws NotFoundException for missing files', () async {
       h.onGet(
         'file/info',

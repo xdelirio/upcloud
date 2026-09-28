@@ -30,40 +30,56 @@ const _fileKeys = {
   'file_code',
   'filecode',
   'title',
+  'file_title',
   'name',
   'fld_id',
+  'file_fld_id',
   'size',
   'file_size',
   'uploaded',
+  'file_created',
   'thumbnail',
+  'player_img',
   'link',
   'length',
+  'file_length',
   'views',
+  'file_views',
   'public',
+  'file_public',
   'canplay',
   'status',
 };
 
 /// Converts a file object from `/file/list`, `/file/info` or `/folder/list`.
 ///
+/// `/file/info` prefixes most fields with `file_` (`file_title`,
+/// `file_fld_id`, `file_length`...) and names the thumbnail `player_img`;
+/// both spellings are accepted.
+///
 /// [site] builds the watch page (`{site}/d/{code}`) when the API does not
 /// return a `link`. Returns `null` when the object has no file code.
 CloudFile? byseFileFromJson(Map<String, Object?> json, {required Uri site}) {
   final code = byseFileCode(json);
   if (code == null) return null;
-  final size = readInt(json['size'] ?? json['file_size']);
-  final length = readSecondsDuration(json['length']);
+  Object? read(String key) => json[key] ?? json['file_$key'];
+  final size = readInt(read('size'));
+  final length = readSecondsDuration(read('length'));
   return CloudFile(
     id: FileId(code),
-    name: readString(json['title']) ?? readString(json['name']) ?? code,
-    folderId: byseFolderId(json['fld_id']),
+    name:
+        readString(read('title')) ??
+        readString(json['name']) ??
+        readString(json['file_name']) ??
+        code,
+    folderId: byseFolderId(read('fld_id')),
     size: size == null || size < 0 ? null : DataSize(size),
-    createdAt: readDateTime(json['uploaded']),
-    thumbnailUrl: readUri(json['thumbnail']),
+    createdAt: readDateTime(json['uploaded'] ?? json['file_created']),
+    thumbnailUrl: readUri(json['thumbnail'] ?? json['player_img']),
     pageUrl: readUri(json['link']) ?? byseFileUrl(site, 'd', code),
     duration: length == null || length == Duration.zero ? null : length,
-    views: readInt(json['views']),
-    isPublic: readBool(json['public']),
+    views: readInt(read('views')),
+    isPublic: readBool(read('public')),
     isReady: readBool(json['canplay']),
     extra: _extra(json, _fileKeys),
   );

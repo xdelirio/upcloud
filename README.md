@@ -45,6 +45,7 @@ dart pub get                       # resolves the whole workspace
 tool/gen.sh upcloud                # code generation (freezed/json)
 tool/gen.sh upcloud_flutter
 (cd packages/upcloud && dart test)
+(cd packages/upcloud && dart test -P live)   # real APIs, see CONTRIBUTING.md
 (cd packages/upcloud_flutter && flutter test)
 (cd packages/upcloud_flutter/example && flutter test integration_test -d macos)
 (cd packages/upcloud_flutter/example && flutter run)

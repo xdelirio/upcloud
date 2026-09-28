@@ -158,6 +158,12 @@ Map<String, Object?>? _tryDecode(Object? data) {
   return null;
 }
 
+/// Answer of clones that turned an endpoint off (StreamHG and EarnVids for
+/// `file/delete` and `folder/delete`).
+final _unsupportedPattern = RegExp(
+  r'^\s*invalid (operation|op|action)\W*$',
+  caseSensitive: false,
+);
 final _authPattern = RegExp(
   r'(\bkey\b|api[ _-]?key|unauthori[sz]ed|not authori[sz]ed|authenticat)',
   caseSensitive: false,
@@ -209,6 +215,8 @@ Map<String, Object?> checkUploadResponse(UploadResponse response) {
 /// Converts an XVS error ([status] and [message] of the envelope) into the
 /// matching [UpCloudException].
 ///
+/// * "Invalid operation" (the clone has no such endpoint):
+///   [UnsupportedOperationException].
 /// * Messages about the API key, `401` and `403`: [AuthenticationException].
 /// * `404` and "not found" messages: [NotFoundException].
 /// * `429` and "too many requests" messages: [RateLimitedException].
@@ -221,6 +229,9 @@ UpCloudException xvsError({
   Object? cause,
   StackTrace? stackTrace,
 }) {
+  if (_unsupportedPattern.hasMatch(message)) {
+    return UnsupportedOperationException(message);
+  }
   if (_authPattern.hasMatch(message)) {
     return AuthenticationException(
       message,
