@@ -141,9 +141,7 @@ void main() {
 
     test('missing credentials are rejected when creating the provider', () {
       expect(
-        () => mediaFire.create(
-          const Credentials({'email': 'me@example.com', 'password': 'x'}),
-        ),
+        () => mediaFire.create(const Credentials({'email': 'me@example.com'})),
         throwsA(isA<AuthenticationException>()),
       );
     });

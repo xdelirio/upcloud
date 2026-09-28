@@ -8,7 +8,7 @@ void main() {
     final expected = {
       xVideoSharing: ('xvideosharing', 'https://xvideosharing.com/api'),
       streamHg: ('streamhg', 'https://streamhgapi.com/api'),
-      earnVids: ('earnvids', 'https://vidhideapi.com/api'),
+      earnVids: ('earnvids', 'https://earnvidsapi.com/api'),
     };
 
     for (final MapEntry(key: definition, value: (id, apiBase))

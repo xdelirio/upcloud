@@ -38,7 +38,7 @@ void main() {
         mediaFire.credentialSchema.missingFields(
           const Credentials({'email': 'me@example.com'}),
         ),
-        ['password', 'application_id'],
+        ['password'],
       );
     });
 

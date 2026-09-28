@@ -1,7 +1,7 @@
 {
   "$schema": "./providers.schema.json",
   "schemaVersion": 1,
-  "updatedAt": "2026-09-28T00:00:00Z",
+  "updatedAt": "2026-09-28T02:00:00Z",
   "providers": [
     {
       "id": "streamhg",
@@ -10,17 +10,21 @@
       "description": "Video hosting with unlimited storage and HLS streaming.",
       "website": "https://streamhg.com",
       "iconUrl": "https://streamhg.com/HG1/images/favicon/favicon-32x32.png",
-      "apiBase": "https://streamhgapi.com/api"
+      "apiBase": "https://streamhgapi.com/api",
+      "settings": {
+        "pageUrlTemplate": "https://hgcloud.to/{code}"
+      }
     },
     {
       "id": "earnvids",
-      "name": "EarnVids (VidHide)",
+      "name": "EarnVids",
       "driver": "xvs",
       "description": "Video hosting formerly known as VidHide.",
       "website": "https://earnvids.com",
-      "apiBase": "https://vidhideapi.com/api",
+      "apiBase": "https://earnvidsapi.com/api",
+      "mirrors": ["https://vidhideapi.com/api"],
       "settings": {
-        "pageUrlTemplate": "https://vidhide.com/v/{code}"
+        "pageUrlTemplate": "https://morencius.com/file/{code}"
       }
     },
     {

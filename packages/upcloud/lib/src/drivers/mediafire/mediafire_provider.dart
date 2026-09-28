@@ -24,10 +24,10 @@ import 'package:upcloud/src/drivers/mediafire/mediafire_uploader.dart';
 
 /// Credential keys and helpers for [MediaFireProvider].
 ///
-/// MediaFire authenticates with the account email and password plus the id
-/// of a MediaFire application (Account Settings > Developers). The
-/// application secret key is only needed when the application has "Require
-/// Secret Key" enabled.
+/// MediaFire authenticates with the account email and password. An own
+/// MediaFire application (Account Settings > Developers) is optional: by
+/// default [defaultApplicationId] is used. The application secret key is
+/// only needed when that application has "Require Secret Key" enabled.
 abstract final class MediaFireCredentials {
   /// Key of the account email.
   static const email = 'email';
@@ -37,6 +37,10 @@ abstract final class MediaFireCredentials {
 
   /// Key of the MediaFire application id.
   static const applicationId = 'application_id';
+
+  /// Application id used when none is given: a public MediaFire
+  /// application that signs in with email and password only.
+  static const defaultApplicationId = '42511';
 
   /// Key of the (optional) application secret key.
   static const String apiKey = CredentialField.apiKeyId;
@@ -61,7 +65,9 @@ abstract final class MediaFireCredentials {
     CredentialField(
       id: applicationId,
       label: 'Application ID',
-      hint: 'Create an app in Account Settings > Developers',
+      isRequired: false,
+      defaultValue: defaultApplicationId,
+      hint: 'Only to use your own app (Account Settings > Developers)',
       helpUrl: helpUrl,
     ),
     CredentialField(
@@ -78,7 +84,7 @@ abstract final class MediaFireCredentials {
   static Credentials create({
     required String email,
     required String password,
-    required String applicationId,
+    String applicationId = defaultApplicationId,
     String? apiKey,
   }) => Credentials({
     MediaFireCredentials.email: email,
@@ -140,9 +146,12 @@ final class MediaFireProvider
     // Validates presence; the raw value keeps meaningful whitespace.
     credentials.require(MediaFireCredentials.password);
     final password = credentials[MediaFireCredentials.password]!;
-    final applicationId = credentials.require(
-      MediaFireCredentials.applicationId,
-    );
+    final customApplicationId = credentials[MediaFireCredentials.applicationId]
+        ?.trim();
+    final applicationId =
+        customApplicationId == null || customApplicationId.isEmpty
+        ? MediaFireCredentials.defaultApplicationId
+        : customApplicationId;
     final apiKey = credentials[MediaFireCredentials.apiKey]?.trim();
 
     final resolvedLimits =
