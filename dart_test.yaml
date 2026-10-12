@@ -1,0 +1,6 @@
+# Tests tagged `live` call the real provider APIs with the credentials of
+# the `.env` file at the root of the repository. They are skipped by
+# default; see "Live tests" in CONTRIBUTING.md to run them.
+tags:
+  live:
+    skip: "Live test: run it with --run-skipped (see CONTRIBUTING.md)"

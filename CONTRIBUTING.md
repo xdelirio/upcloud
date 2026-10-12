@@ -27,15 +27,15 @@ in their domain. Adding one does not require Dart code:
    an uploaded file on the website to find it.
 
 2. Bump `updatedAt` at the top of the file.
-3. Bundle the registry into the package and run the tests:
+3. Bundle the registry into the app and run the tests:
 
    ```sh
    dart run tool/sync_registry.dart
-   (cd packages/upcloud && dart test test/registry)
+   flutter test test/registry
    ```
 
 Apps pick up the new entry from the remote registry on their next refresh;
-the bundled copy ships with the next package release.
+the bundled copy ships with the next app release.
 
 Rules:
 
@@ -49,13 +49,13 @@ Rules:
 
 A driver is needed when an API differs from the existing ones.
 
-1. Create `packages/upcloud/lib/src/drivers/<name>/`.
+1. Create `lib/src/drivers/<name>/`.
 2. Implement a `CloudProvider` with the capability interfaces the API
    supports (`FolderBrowsing`, `FileUploading`...). Use `createDio`,
    `guardRequest` and the lenient readers in `core/http`. Mark read-only
    requests as retryable with `retryableExtraKey`; never retry writes.
 3. Uploads never send bytes from the driver: an `UploadExecutor` does
-   (background uploads in Flutter apps).
+   (`BackgroundUploadExecutor` in the app).
    - `prepareUpload(file, options:)` checks `limits`, calls the API if
      needed (upload server, session token...) and returns an
      `UploadRequest`: the URL, `multipart` fields (the executor adds the
@@ -86,7 +86,7 @@ A driver is needed when an API differs from the existing ones.
 The normal tests never hit the network. Tests tagged `live` call the real
 APIs of the bundled providers with your accounts, to check that the
 drivers still match them. They are skipped by default
-(`packages/upcloud/dart_test.yaml`).
+(`dart_test.yaml`).
 
 1. Put the credentials in a `.env` file at the root of the repository.
    It is git-ignored: never commit it, paste it or print it. Providers
@@ -104,13 +104,13 @@ drivers still match them. They are skipped by default
    MEDIAFIRE_API_KEY=<application secret key>
    ```
 
-2. Run them from `packages/upcloud`:
+2. Run them one file at a time (`-j 1`: the tests share the accounts
+   and folders):
 
    ```sh
-   dart test -P live                    # every provider with credentials
-   dart test -t live --run-skipped      # same thing, without the preset
-   UPCLOUD_LIVE_PROVIDERS=streamhg,byse dart test -P live
-   UPCLOUD_LIVE_VERBOSE=1 dart test -P live    # log HTTP requests
+   flutter test test/live --run-skipped -j 1    # every provider with credentials
+   UPCLOUD_LIVE_PROVIDERS=streamhg,byse flutter test test/live --run-skipped -j 1
+   UPCLOUD_LIVE_VERBOSE=1 flutter test test/live --run-skipped -j 1    # log HTTP requests
    ```
 
 `test/live/live_providers_test.dart` checks, for each provider, the
@@ -118,7 +118,7 @@ account info, the root listing, error mapping (invalid API key, unknown
 file), `resolveFolderPath('upcloud-live-test/<run id>')` (created once,
 found again by a new session without duplicates) and an upload of
 `test/fixtures/live/sample.mp4` through `UpCloud.upload` with the
-`dart:io` executor of the example (returned file, `fileInfo`, listing).
+`dart:io` executor of `test/support` (returned file, `fileInfo`, listing).
 Then it uploads 2 files to 2 providers with `uploadBatch` into the same
 path, preferring providers that can delete them. Every copy of the sample
 gets a unique trailing MP4 `free` box, as hosts may deduplicate identical
@@ -140,21 +140,19 @@ The output never contains credentials: the tests scrub every value of
 the `.env` file from their logs and errors, and URLs are logged with
 `redactUri`. Keep it that way when you add tests.
 
-### Flutter executor
+### Background executor
 
-`packages/upcloud_flutter/example/integration_test/live_upload_test.dart`
-uploads a small embedded video through `BackgroundUploadExecutor` to the
+`integration_test/live_upload_test.dart` uploads a small embedded video through `BackgroundUploadExecutor` to the
 first provider with credentials (StreamHG, EarnVids, Byse, then
 MediaFire; `UPCLOUD_LIVE_PROVIDERS` restricts the choice), and deletes it
-when the API allows it. It is tagged `live` and skipped by the example's
+when the API allows it. It is tagged `live` and skipped by
 `dart_test.yaml`, so `flutter test integration_test` does not even launch
 it (macOS cannot start the app twice in one run). Run it on its own, with
 the credentials passed as defines:
 
 ```sh
-cd packages/upcloud_flutter/example
 flutter test integration_test/live_upload_test.dart -d macos \
-  --run-skipped --dart-define-from-file=../../../.env
+  --run-skipped --dart-define-from-file=.env
 flutter clean
 ```
 
@@ -165,8 +163,8 @@ artifacts that contain them (`build/`, `.dart_tool/`,
 ## Code style
 
 - Everything in the repository is written in English.
-- `very_good_analysis` lints; run `dart analyze` / `flutter analyze`.
+- `very_good_analysis` lints; run `flutter analyze`.
 - `dart format` before committing.
 - Generated code (`*.freezed.dart`, `*.g.dart`) is committed: run
-  `tool/gen.sh <package>` after changing freezed or json_serializable
+  `tool/gen.sh` after changing freezed or json_serializable
   classes.
