@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:upcloud/src/core/http/json_readers.dart';
 import 'package:upcloud/src/core/models/account_info.dart';
 import 'package:upcloud/src/core/models/cloud_entry.dart';
 import 'package:upcloud/src/core/models/data_size.dart';
@@ -124,14 +125,13 @@ extension MediaFireWebUploadMapper on MediaFireWebUploadDto {
   RemoteUploadJob toRemoteUploadJob() {
     final errorCode = errorStatus;
     final failed = errorCode != null && errorCode != 0;
-    final percent = percentage;
     final key = quickkey;
     return RemoteUploadJob(
       id: uploadkey ?? '',
       status: failed ? RemoteUploadStatus.failed : _status(statusCode),
       fileId: key == null ? null : FileId(key),
       sourceUrl: url,
-      progress: percent == null ? null : (percent / 100).clamp(0, 1).toDouble(),
+      progress: readPercent(percentage),
       error: failed ? _webUploadError(errorCode) : null,
       extra: {
         'filename': ?filename,

@@ -12,7 +12,6 @@ class UpCloudSection extends StatelessWidget {
     required this.children,
     this.subtitle,
     this.trailing,
-    this.divided = true,
     super.key,
   });
 
@@ -25,11 +24,8 @@ class UpCloudSection extends StatelessWidget {
   /// Widget at the end of the title row, e.g. a text button.
   final Widget? trailing;
 
-  /// Rows of the card.
+  /// Rows of the card, separated with dividers.
   final List<Widget> children;
-
-  /// Whether to separate [children] with dividers.
-  final bool divided;
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +82,7 @@ class UpCloudSection extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               for (final (index, child) in children.indexed) ...[
-                if (divided && index > 0)
+                if (index > 0)
                   const Divider(height: 1, indent: 16, endIndent: 16),
                 child,
               ],

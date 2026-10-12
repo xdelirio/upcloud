@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:upcloud/src/core/cancellation.dart';
 import 'package:upcloud/src/core/errors.dart';
 import 'package:upcloud/src/core/http/json_readers.dart';
 import 'package:upcloud/src/core/models/upload.dart';
@@ -61,11 +62,13 @@ final class MediaFireUploader {
   /// until the file has a quickkey.
   ///
   /// Errors reported once MediaFire accepted the file carry the HTTP
-  /// status of [response], so the file is not uploaded again.
+  /// status of [response], so the file is not uploaded again. Polling
+  /// stops with a [CancelledException] when [cancelToken] is cancelled.
   Future<MediaFireDoUploadDto> complete(
     UploadRequest request,
-    UploadResponse response,
-  ) async {
+    UploadResponse response, {
+    CancellationToken? cancelToken,
+  }) async {
     final body = _api.parseUploadResponse(request, response);
     final status = response.statusCode;
     final upload = _doUpload(body);
@@ -78,18 +81,41 @@ final class MediaFireUploader {
         response: body,
       );
     }
-    return await _poll(key, status);
+    return await _poll(key, status, cancelToken);
   }
 
   /// Polls `upload/poll_upload` until the upload has a quickkey.
-  Future<MediaFireDoUploadDto> _poll(String key, int status) async {
+  ///
+  /// MediaFire already has the file, so transient failures of the poll
+  /// are tried again until [pollTimeout] instead of being thrown:
+  /// uploading the file again would duplicate it.
+  Future<MediaFireDoUploadDto> _poll(
+    String key,
+    int status,
+    CancellationToken? cancelToken,
+  ) async {
     final watch = Stopwatch()..start();
     while (true) {
-      final body = await _api.request(
-        'upload/poll_upload',
-        params: {'key': key},
-        retryable: true,
-      );
+      if (cancelToken?.isCancelled ?? false) throw const CancelledException();
+      final Map<String, Object?> body;
+      try {
+        body = await _api.request(
+          'upload/poll_upload',
+          params: {'key': key},
+          retryable: true,
+        );
+      } on UpCloudException catch (e) {
+        if (!_isTransient(e)) rethrow;
+        if (watch.elapsed >= pollTimeout) {
+          throw ProviderException(
+            'MediaFire did not confirm the upload (key $key)',
+            statusCode: status,
+            cause: e,
+          );
+        }
+        await _pause(cancelToken);
+        continue;
+      }
       final upload = _doUpload(body);
       if (upload == null) {
         throw ProviderException(
@@ -118,9 +144,23 @@ final class MediaFireUploader {
           response: body,
         );
       }
-      await Future<void>.delayed(pollInterval);
+      await _pause(cancelToken);
     }
   }
+
+  /// Waits [pollInterval], or less when [cancelToken] is cancelled.
+  Future<void> _pause(CancellationToken? cancelToken) => Future.any([
+    Future<void>.delayed(pollInterval),
+    ?cancelToken?.whenCancelled,
+  ]);
+
+  /// Whether a poll that failed with [error] may work if sent again.
+  static bool _isTransient(UpCloudException error) => switch (error) {
+    NetworkException() || RateLimitedException() => true,
+    ProviderException(:final statusCode) =>
+      statusCode == null || statusCode >= 500,
+    _ => false,
+  };
 
   static MediaFireDoUploadDto? _doUpload(Map<String, Object?> body) {
     final single = readMap(body['doupload']);

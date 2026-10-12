@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:upcloud/src/app/page_scaffold.dart';
-import 'package:upcloud/src/app/strings.dart';
 import 'package:upcloud/ui.dart';
 
 /// Connects a new account: choose the provider and enter its credentials
@@ -14,12 +13,12 @@ class AddAccountPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final strings = ExampleStrings.of(context);
+    final l10n = UpCloudLocalizations.of(context);
     return FormPageScaffold(
-      title: strings.addAccount,
+      title: l10n.addAccount,
       header: FormHeader(
-        title: strings.connectTitle,
-        message: strings.connectMessage,
+        title: l10n.connectTitle,
+        message: l10n.connectMessage,
       ),
       child: AccountForm(
         controller: controller,

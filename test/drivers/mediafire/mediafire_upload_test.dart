@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:upcloud/upcloud.dart';
 
@@ -72,6 +73,47 @@ void main() {
         'user/renew_session_token',
       ]);
       expect(request.url.queryParameters['session_token'], renewedToken);
+    });
+
+    test('replaces a token older than five minutes with a new login', () async {
+      mf.on('user/get_info', fixture('user_info'));
+      final provider = mf.provider();
+      await provider.prepareUpload(_file);
+      mf.now = mf.now.add(const Duration(minutes: 4));
+      await provider.prepareUpload(_file);
+      expect(mf.actions, ['user/get_session_token']);
+
+      // Renewing would not extend a token this young.
+      mf.now = mf.now.add(const Duration(seconds: 90));
+      await provider.accountInfo();
+      expect(mf.actions, ['user/get_session_token', 'user/get_info']);
+      mf.on('user/get_session_token', sessionToken('second-token'));
+
+      final request = await provider.prepareUpload(_file);
+
+      expect(mf.actions, [
+        'user/get_session_token',
+        'user/get_info',
+        'user/get_session_token',
+      ]);
+      expect(request.url.queryParameters['session_token'], 'second-token');
+    });
+
+    test('concurrent uploads share the new token', () async {
+      final provider = mf.provider();
+      await provider.prepareUpload(_file);
+      mf.now = mf.now.add(const Duration(minutes: 5, seconds: 30));
+
+      final requests = await Future.wait([
+        provider.prepareUpload(_file),
+        provider.prepareUpload(_file),
+      ]);
+
+      expect(mf.actions, ['user/get_session_token', 'user/get_session_token']);
+      expect(
+        requests[0].url.queryParameters['session_token'],
+        requests[1].url.queryParameters['session_token'],
+      );
     });
 
     test('rejects files over the size limit before signing in', () async {
@@ -149,6 +191,113 @@ void main() {
         'session_token': loginToken,
         'response_format': 'json',
       });
+    });
+
+    test('a failed file/update does not fail the upload', () async {
+      mf
+        ..on('upload/poll_upload', fixture('poll_upload_done'))
+        ..on('file/update', 'Unavailable', status: 503)
+        ..on('file/get_info', fixture('file_info'));
+      final provider = mf.provider();
+      final request = await provider.prepareUpload(
+        _file,
+        options: const UploadOptions(description: 'Notes'),
+      );
+
+      final file = await provider.completeUpload(
+        request,
+        _reply(fixture('upload_simple')),
+      );
+
+      expect(file.id, const FileId('7a8kc7354q939b6'));
+      // A write: never sent again by the HTTP client.
+      final update = mf.calls('file/update').single;
+      expect(update.extra[retryableExtraKey], isFalse);
+    });
+
+    test('keeps polling after a transient poll failure', () async {
+      var failures = 2;
+      mf.dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            if (options.path == 'upload/poll_upload.php' && failures-- > 0) {
+              handler.reject(
+                DioException.connectionError(
+                  requestOptions: options,
+                  reason: 'offline',
+                ),
+              );
+              return;
+            }
+            handler.next(options);
+          },
+        ),
+      );
+      mf
+        ..on('upload/poll_upload', fixture('poll_upload_done'))
+        ..on('file/get_info', fixture('file_info'));
+      final provider = mf.provider();
+      final request = await provider.prepareUpload(_file);
+
+      final file = await provider.completeUpload(
+        request,
+        _reply(fixture('upload_simple')),
+      );
+
+      expect(file.id, const FileId('7a8kc7354q939b6'));
+      expect(mf.calls('upload/poll_upload'), hasLength(3));
+    });
+
+    test('stops polling when the upload is cancelled', () async {
+      final token = CancellationToken();
+      mf.onCallback('upload/poll_upload', (_) {
+        if (mf.calls('upload/poll_upload').length == 2) token.cancel();
+        return fixture('poll_upload_in_progress');
+      });
+      final provider = mf.provider();
+      final request = await provider.prepareUpload(_file);
+
+      await expectLater(
+        provider.completeUpload(
+          request,
+          _reply(fixture('upload_simple')),
+          cancelToken: token,
+        ),
+        throwsA(isA<CancelledException>()),
+      );
+      expect(mf.calls('upload/poll_upload'), hasLength(2));
+    });
+
+    test('poll failures until the timeout are not retried', () async {
+      final provider = mf.provider(pollTimeout: Duration.zero);
+      final request = await provider.prepareUpload(_file);
+
+      Future<Object?> complete() => provider
+          .completeUpload(request, _reply(fixture('upload_simple')))
+          .then<Object?>((_) => null, onError: (Object e) => e);
+      final notConfirmed = isA<ProviderException>()
+          .having((e) => e.statusCode, 'statusCode', 200)
+          .having((e) => e.message, 'message', contains('did not confirm'));
+
+      mf.on('upload/poll_upload', 'Unavailable', status: 503);
+      final serverError = await complete();
+      expect(serverError, notConfirmed);
+      expect(
+        TransferManager.isRetryable(serverError! as ProviderException),
+        isFalse,
+      );
+
+      mf.on('upload/poll_upload', apiError(163, 'Rate limited'), status: 429);
+      expect(await complete(), notConfirmed);
+
+      mf.onThrow(
+        'upload/poll_upload',
+        DioException.connectionError(
+          requestOptions: RequestOptions(path: 'upload/poll_upload.php'),
+          reason: 'offline',
+        ),
+      );
+      expect(await complete(), notConfirmed);
     });
 
     test('falls back to the poll data when the details fail', () async {
@@ -282,6 +431,22 @@ void main() {
         ),
         throwsA(
           isA<ProviderException>().having((e) => e.statusCode, 'status', 503),
+        ),
+      );
+      await expectLater(
+        provider.completeUpload(
+          request,
+          _reply(
+            apiError(163, 'API access limit reached'),
+            status: 429,
+          ).copyWith(headers: {'retry-after': '15'}),
+        ),
+        throwsA(
+          isA<RateLimitedException>().having(
+            (e) => e.retryAfter,
+            'retryAfter',
+            const Duration(seconds: 15),
+          ),
         ),
       );
     });

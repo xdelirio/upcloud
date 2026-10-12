@@ -5,11 +5,12 @@ import 'package:upcloud/src/app/app.dart';
 import 'package:upcloud/src/app/glass_chrome.dart';
 import 'package:upcloud/src/app/settings.dart';
 import 'package:upcloud/src/app/settings_page.dart';
-import 'package:upcloud/testing.dart';
 import 'package:upcloud/ui.dart';
 
+import '../support/testing.dart';
+
 void main() {
-  Future<UpCloud> pumpExample(WidgetTester tester, Size size) async {
+  Future<UpCloud> pumpApp(WidgetTester tester, Size size) async {
     tester.view
       ..physicalSize = size
       ..devicePixelRatio = 1;
@@ -29,7 +30,7 @@ void main() {
     await tester.pumpWidget(
       LiquidGlassWidgets.wrap(
         brightnessResolver: Theme.maybeBrightnessOf,
-        child: UpCloudScope(upcloud: upcloud, child: const ExampleApp()),
+        child: UpCloudScope(upcloud: upcloud, child: const UpCloudApp()),
       ),
     );
     await tester.pumpAndSettle();
@@ -52,7 +53,7 @@ void main() {
   testWidgets('adds a demo account and browses it on a desktop', (
     tester,
   ) async {
-    final upcloud = await pumpExample(tester, const Size(1280, 900));
+    final upcloud = await pumpApp(tester, const Size(1280, 900));
     expect(find.byType(GlassSidebar), findsOneWidget);
     expect(find.text('No accounts yet'), findsOneWidget);
 
@@ -71,7 +72,7 @@ void main() {
   });
 
   testWidgets('navigates with the glass tab bar on a phone', (tester) async {
-    await pumpExample(tester, const Size(393, 852));
+    await pumpApp(tester, const Size(393, 852));
     expect(find.byType(GlassTabBar), findsOneWidget);
     expect(find.byType(GlassSidebar), findsNothing);
 
@@ -106,7 +107,7 @@ void main() {
   });
 
   testWidgets('offers encrypted backups in the settings page', (tester) async {
-    await pumpExample(tester, const Size(393, 852));
+    await pumpApp(tester, const Size(393, 852));
     await tester.tap(find.byTooltip('Settings').last);
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
@@ -144,8 +145,27 @@ void main() {
     expect(saved.merge(const {}).locale, const Locale('es'));
   });
 
+  test('the theme and language are saved and loaded', () async {
+    final store = InMemoryKeyValueStore();
+    expect((await AppSettings.load(store)).themeMode, ThemeMode.system);
+
+    await const AppSettings(
+      themeMode: ThemeMode.dark,
+      locale: Locale('es'),
+      animatedBackground: false,
+    ).save(store);
+    final loaded = await AppSettings.load(store);
+    expect(loaded.themeMode, ThemeMode.dark);
+    expect(loaded.locale, const Locale('es'));
+    expect(loaded.animatedBackground, isFalse);
+
+    // Unreadable values fall back to the defaults.
+    await store.write(AppSettings.storeKey, 'not json');
+    expect((await AppSettings.load(store)).locale, isNull);
+  });
+
   testWidgets('starts a batch from the upload tab', (tester) async {
-    final upcloud = await pumpExample(tester, const Size(1280, 900));
+    final upcloud = await pumpApp(tester, const Size(1280, 900));
     await addDemoAccount(tester);
 
     await tester.tap(find.text('Upload').first);

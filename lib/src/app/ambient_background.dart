@@ -10,21 +10,25 @@ import 'package:flutter/scheduler.dart';
 /// There is a single clock above the navigator, so a pushed route paints
 /// exactly the same frame as the route below it.
 ///
-/// The drift is so slow that about 15 updates per second look continuous.
+/// The drift is so slow that about 10 updates per second look continuous.
 /// A timer is used instead of a ticker on purpose: a ticker would schedule
 /// a frame on every vsync, and each frame re-renders the glass surfaces
-/// that blur the backdrop. The motion stops when the platform asks to
-/// reduce animations and while the app is not visible.
+/// that blur the backdrop. The motion stops when it is not [enabled], when
+/// the platform asks to reduce animations and while the app is not
+/// visible.
 class AmbientMotion extends StatefulWidget {
-  const AmbientMotion({required this.child, super.key});
+  const AmbientMotion({required this.child, this.enabled = true, super.key});
 
   final Widget child;
+
+  /// Whether the backdrop drifts; a still backdrop costs no frames.
+  final bool enabled;
 
   /// Duration of a full loop of the drift.
   static const period = Duration(seconds: 60);
 
   /// Time between two updates of the drift.
-  static const interval = Duration(milliseconds: 66);
+  static const interval = Duration(milliseconds: 100);
 
   /// The drift phase, from 0 to 1. Stays still without an [AmbientMotion].
   static ValueListenable<double> of(BuildContext context) =>
@@ -57,11 +61,17 @@ class _AmbientMotionState extends State<AmbientMotion> {
     _sync();
   }
 
+  @override
+  void didUpdateWidget(AmbientMotion oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.enabled != oldWidget.enabled) _sync();
+  }
+
   /// Runs the clock only while it can be seen.
   void _sync() {
     final state = SchedulerBinding.instance.lifecycleState;
     final visible = state == null || state == AppLifecycleState.resumed;
-    if (_reduceMotion || !visible) {
+    if (!widget.enabled || _reduceMotion || !visible) {
       _timer?.cancel();
       _timer = null;
       _clock.stop();

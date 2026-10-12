@@ -6,6 +6,7 @@ import 'package:upcloud/src/core/errors.dart';
 import 'package:upcloud/src/core/models/cloud_entry.dart';
 import 'package:upcloud/src/core/models/data_size.dart';
 import 'package:upcloud/src/core/models/upload.dart';
+import 'package:upcloud/src/core/provider_limits.dart';
 import 'package:upcloud/src/settings/upload_settings.dart';
 import 'package:upcloud/src/transfer/folder_path_resolver.dart';
 import 'package:upcloud/src/transfer/transfer_task.dart';
@@ -314,7 +315,7 @@ final class TransferManager {
         task.fail(e);
         continue;
       } on Object catch (e, st) {
-        task.fail(ProviderException('$e', cause: e, stackTrace: st));
+        task.fail(wrapError(e, st));
         continue;
       }
 
@@ -324,13 +325,13 @@ final class TransferManager {
       }
 
       _running.add(task);
-      unawaited(_run(task, provider));
+      unawaited(_run(task));
     }
   }
 
-  Future<void> _run(UploadTask task, CloudProvider provider) async {
+  Future<void> _run(UploadTask task) async {
     try {
-      task.complete(await _uploadWithRetries(task, provider));
+      task.complete(await _uploadWithRetries(task));
       if (_tasks.contains(task)) {
         _completedAt[task] = DateTime.now();
         _scheduleAutoClear(task);
@@ -338,21 +339,20 @@ final class TransferManager {
     } on UpCloudException catch (e) {
       task.fail(e);
     } on Object catch (e, st) {
-      task.fail(ProviderException('$e', cause: e, stackTrace: st));
+      task.fail(wrapError(e, st));
     } finally {
       _running.remove(task);
       _pump();
     }
   }
 
-  Future<CloudFile> _uploadWithRetries(
-    UploadTask task,
-    CloudProvider provider,
-  ) async {
+  Future<CloudFile> _uploadWithRetries(UploadTask task) async {
     for (var retry = 1; ; retry++) {
       task.startAttempt();
       try {
-        return await _attempt(task, provider);
+        // Resolved for every attempt: the connection is replaced when the
+        // account or its provider changes.
+        return await _attempt(task, _resolve(task.accountId));
       } on UpCloudException catch (e) {
         final path = task.folderPath;
         if (e is NotFoundException && path != null && path.isNotEmpty) {
@@ -408,7 +408,7 @@ final class TransferManager {
     );
     return await _untilCancelled(
       task,
-      provider.completeUpload(request, response),
+      provider.completeUpload(request, response, cancelToken: task.cancelToken),
     );
   }
 
@@ -444,7 +444,7 @@ final class TransferManager {
     );
     if (rejection != null) {
       throw UploadRejectedException(
-        describeRejection(rejection),
+        describeUploadRejection(rejection),
         reason: rejection,
       );
     }
@@ -497,13 +497,3 @@ final class TransferManager {
     };
   }
 }
-
-/// A short English description of [rejection].
-String describeRejection(UploadRejection rejection) => switch (rejection) {
-  FileTooLarge(:final size, :final maxSize) =>
-    'File is too large ($size, max $maxSize)',
-  ExtensionNotAllowed(:final extension) =>
-    'File type ".$extension" is not allowed',
-  NotEnoughStorage(:final size, :final available) =>
-    'Not enough storage ($size needed, $available available)',
-};

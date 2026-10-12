@@ -58,7 +58,7 @@ final class XvsMapper {
       views: dto.views,
       isPublic: dto.isPublic,
       isReady: dto.canPlay,
-      extra: _extra(json, XvsFileDto.knownKeys),
+      extra: readExtra(json, XvsFileDto.knownKeys),
     );
   }
 
@@ -74,7 +74,7 @@ final class XvsMapper {
           ? parentId
           : XvsMapper.folderId(dto.parentId),
       fileCount: dto.fileCount,
-      extra: _extra(json, XvsFolderDto.knownKeys),
+      extra: readExtra(json, XvsFolderDto.knownKeys),
     );
   }
 
@@ -92,7 +92,7 @@ final class XvsMapper {
           dto.premium ?? (expires != null && expires.isAfter(DateTime.now())),
       premiumUntil: expires,
       balance: dto.balance,
-      extra: _extra(json, XvsAccountDto.knownKeys),
+      extra: readExtra(json, XvsAccountDto.knownKeys),
     );
   }
 
@@ -110,11 +110,11 @@ final class XvsMapper {
       fileId: code == null ? null : FileId(code),
       sourceUrl: dto.url,
       folderId: folderId(dto.folderId),
-      progress: _fraction(dto.progress),
+      progress: readPercent(dto.progress),
       error:
           dto.error ??
           (status == RemoteUploadStatus.failed ? dto.status : null),
-      extra: _extra(json, XvsRemoteUploadDto.knownKeys),
+      extra: readExtra(json, XvsRemoteUploadDto.knownKeys),
     );
   }
 
@@ -155,17 +155,6 @@ final class XvsMapper {
     }
     return size(largest);
   }
-
-  static double? _fraction(double? percent) =>
-      percent == null ? null : (percent / 100).clamp(0, 1).toDouble();
-
-  static Map<String, Object?> _extra(
-    Map<String, Object?> json,
-    Set<String> known,
-  ) => {
-    for (final MapEntry(:key, :value) in json.entries)
-      if (value != null && !known.contains(key)) key: value,
-  };
 }
 
 /// Objects of the list [value]; a single object is wrapped in a list.

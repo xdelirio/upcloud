@@ -6,17 +6,11 @@ import 'package:upcloud/src/controllers/accounts_state.dart';
 import 'package:upcloud/src/l10n/upcloud_localizations.dart';
 import 'package:upcloud/src/scope/upcloud_scope.dart';
 import 'package:upcloud/src/theme/upcloud_theme.dart';
-import 'package:upcloud/src/widgets/accounts/provider_picker.dart';
+import 'package:upcloud/src/widgets/accounts/provider_avatar.dart';
 import 'package:upcloud/src/widgets/common/dialogs.dart';
+import 'package:upcloud/src/widgets/common/menu_row.dart';
 import 'package:upcloud/src/widgets/common/message_view.dart';
 import 'package:upcloud/upcloud.dart';
-
-/// Builds a custom row of an [AccountList].
-typedef AccountItemBuilder = Widget Function(
-  BuildContext context,
-  CloudAccount account,
-  AccountsController controller,
-);
 
 /// The saved accounts, with their provider, connection status and storage.
 ///
@@ -32,8 +26,6 @@ class AccountList extends StatefulWidget {
     this.selectedAccountId,
     this.showActions = true,
     this.verifyOnLoad = false,
-    this.itemBuilder,
-    this.emptyBuilder,
     this.padding,
     super.key,
   });
@@ -55,12 +47,6 @@ class AccountList extends StatefulWidget {
 
   /// Whether to check every account connection when the list is created.
   final bool verifyOnLoad;
-
-  /// Replaces the default row.
-  final AccountItemBuilder? itemBuilder;
-
-  /// Replaces the empty view.
-  final WidgetBuilder? emptyBuilder;
 
   /// Padding of the list.
   final EdgeInsetsGeometry? padding;
@@ -153,27 +139,24 @@ class _AccountListState extends State<AccountList> {
           }
           final l10n = UpCloudLocalizations.of(context);
           final onAdd = widget.onAddAccount;
-          return widget.emptyBuilder?.call(context) ??
-              MessageView(
-                icon: Icons.cloud_outlined,
-                title: l10n.noAccounts,
-                message: l10n.noAccountsHint,
-                action: onAdd == null
-                    ? null
-                    : FilledButton.icon(
-                        onPressed: onAdd,
-                        icon: const Icon(Icons.add_rounded),
-                        label: Text(l10n.addAccount),
-                      ),
-              );
+          return MessageView(
+            icon: Icons.cloud_outlined,
+            title: l10n.noAccounts,
+            message: l10n.noAccountsHint,
+            action: onAdd == null
+                ? null
+                : FilledButton.icon(
+                    onPressed: onAdd,
+                    icon: const Icon(Icons.add_rounded),
+                    label: Text(l10n.addAccount),
+                  ),
+          );
         }
         return ListView.builder(
           padding: widget.padding,
           itemCount: state.accounts.length,
           itemBuilder: (context, index) {
             final account = state.accounts[index];
-            final custom = widget.itemBuilder;
-            if (custom != null) return custom(context, account, _controller);
             return _AccountTile(
               key: ValueKey(account.id),
               account: account,
@@ -302,31 +285,18 @@ class _AccountTile extends StatelessWidget {
                       if (onVerify case final verify?)
                         PopupMenuItem(
                           value: verify,
-                          child: Row(
-                            children: [
-                              const Icon(Icons.wifi_protected_setup_rounded),
-                              const SizedBox(width: 12),
-                              Flexible(child: Text(l10n.checkConnection)),
-                            ],
+                          child: MenuRow(
+                            icon: Icons.wifi_protected_setup_rounded,
+                            label: l10n.checkConnection,
                           ),
                         ),
                       if (onRemove case final remove?)
                         PopupMenuItem(
                           value: remove,
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.delete_outline_rounded,
-                                color: scheme.error,
-                              ),
-                              const SizedBox(width: 12),
-                              Flexible(
-                                child: Text(
-                                  l10n.removeAccount,
-                                  style: TextStyle(color: scheme.error),
-                                ),
-                              ),
-                            ],
+                          child: MenuRow(
+                            icon: Icons.delete_outline_rounded,
+                            label: l10n.removeAccount,
+                            color: scheme.error,
                           ),
                         ),
                     ],
@@ -365,7 +335,8 @@ class _StorageBar extends StatelessWidget {
         borderRadius: BorderRadius.circular(theme.progressHeight),
         color: fraction >= 0.9 ? scheme.error : scheme.primary,
         backgroundColor: scheme.surfaceContainerHighest,
-        semanticsValue: '${(fraction * 100).round()} %',
+        semanticsValue: UpCloudLocalizations.of(context)
+            .formatPercent(fraction, round: true),
       ),
     );
   }

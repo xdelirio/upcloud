@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:dio/dio.dart';
 import 'package:upcloud/src/core/errors.dart';
 import 'package:upcloud/src/core/http/http.dart';
@@ -26,11 +24,8 @@ final class ByseApi {
   /// and repeating them would duplicate the action.
   static const readOnlyPaths = {
     'account/info',
-    'account/stats',
     'file/info',
     'file/list',
-    'files/deleted',
-    'files/dmca',
     'folder/list',
     'remote/status',
     'upload/server',
@@ -42,54 +37,36 @@ final class ByseApi {
   Future<Map<String, Object?>> get(
     String path, {
     Map<String, Object?> query = const {},
-  }) {
-    return _send(
+  }) async {
+    final response = await guardRequest(
       () => dio.get<Object?>(
         path,
-        queryParameters: <String, Object?>{
-          'key': apiKey,
-          for (final MapEntry(:key, :value) in query.entries) key: ?value,
-        },
+        queryParameters: {'key': apiKey, ...compactParams(query)},
         options: Options(
           extra: {retryableExtraKey: readOnlyPaths.contains(path)},
         ),
       ),
+      onBadResponse: _apiError,
     );
-  }
-
-  Future<Map<String, Object?>> _send(
-    Future<Response<Object?>> Function() request,
-  ) async {
-    final Response<Object?> response;
-    try {
-      response = await request();
-    } on UpCloudException {
-      rethrow;
-    } on DioException catch (e, st) {
-      throw _mapHttpError(e, st);
-    }
     return parseByseEnvelope(response.data);
   }
 
-  UpCloudException _mapHttpError(DioException e, StackTrace st) {
+  /// The API error of an error page that still carries the envelope,
+  /// preferred over the generic HTTP error. `429` keeps the HTTP error,
+  /// which carries `Retry-After`.
+  static UpCloudException? _apiError(DioException e, StackTrace st) {
     final response = e.response;
-    // Prefer the API message when an error page still carries the envelope.
-    if (e.type == DioExceptionType.badResponse &&
-        response != null &&
-        response.statusCode != 429) {
-      final body = _decode(response.data);
-      final message = body == null ? null : _message(body);
-      if (body != null && message != null) {
-        return byseApiException(
-          readInt(body['status']) ?? response.statusCode,
-          message,
-          response: body,
-          cause: e,
-          stackTrace: st,
-        );
-      }
-    }
-    return mapDioException(e, st);
+    if (response == null || response.statusCode == 429) return null;
+    final body = readJsonObject(response.data);
+    final message = body == null ? null : _message(body);
+    if (body == null || message == null) return null;
+    return byseApiException(
+      readInt(body['status']) ?? response.statusCode,
+      message,
+      response: body,
+      cause: e,
+      stackTrace: st,
+    );
   }
 }
 
@@ -98,7 +75,7 @@ final class ByseApi {
 /// Throws the matching [UpCloudException] when `status` is not `2xx` and a
 /// [ProviderException] when the body is not a JSON object.
 Map<String, Object?> parseByseEnvelope(Object? data) {
-  final body = _decode(data);
+  final body = readJsonObject(data);
   if (body == null) {
     throw ProviderException('Unexpected response from Byse', response: data);
   }
@@ -111,7 +88,7 @@ Map<String, Object?> parseByseEnvelope(Object? data) {
 /// Errors of a `2xx` response without an API status carry the HTTP status:
 /// the server accepted the file, so uploading it again would not help.
 Map<String, Object?> parseByseUploadResponse(UploadResponse response) {
-  final body = _decode(response.body);
+  final body = readJsonObject(response.body);
   final message = body == null ? null : _message(body);
   if (!response.isSuccessful) {
     if (body == null || message == null || response.statusCode == 429) {
@@ -192,19 +169,6 @@ final _quotaPattern = RegExp(
   r'quota|not\s+enough\s+(disk\s+)?(space|storage|bandwidth)|disk\s+space|'
   r'storage\s+(is\s+)?full|limit\s+(reached|exceeded)',
 );
-
-Map<String, Object?>? _decode(Object? data) {
-  if (data is String) {
-    final text = data.trim();
-    if (!text.startsWith('{')) return null;
-    try {
-      return readMap(jsonDecode(text));
-    } on FormatException {
-      return null;
-    }
-  }
-  return readMap(data);
-}
 
 String? _message(Map<String, Object?> body) =>
     readString(body['msg']) ??

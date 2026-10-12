@@ -29,9 +29,6 @@ abstract class TransferEntry with _$TransferEntry {
   /// Shortcut for `task.batchId`.
   String? get batchId => task.batchId;
 
-  /// Automatic retries done so far (`attempt - 1`, at least 0).
-  int get retry => attempt > 1 ? attempt - 1 : 0;
-
   /// Progress between 0 and 1, `null` when unknown or not running.
   double? get fraction => switch (state) {
     TransferRunning(:final progress) => progress.fraction,
@@ -85,49 +82,20 @@ abstract class TransferBatchEntry with _$TransferBatchEntry {
   bool get isFinished => activeCount == 0;
 
   /// Size of every upload in bytes, or `null` while a size is unknown.
-  int? get totalBytes {
-    var total = 0;
-    for (final entry in entries) {
-      final bytes = entry.task.totalBytes;
-      if (bytes == null) return null;
-      total += bytes;
-    }
-    return total;
-  }
+  int? get totalBytes => totalUploadBytes(_snapshots);
 
   /// Bytes sent by running uploads plus the size of completed ones.
-  int get transferredBytes {
-    var sent = 0;
-    for (final entry in entries) {
-      sent += switch (entry.state) {
-        TransferCompleted() => entry.task.totalBytes ?? 0,
-        TransferRunning(:final progress) => progress.transferred,
-        _ => 0,
-      };
-    }
-    return sent;
-  }
+  int get transferredBytes => transferredUploadBytes(_snapshots);
 
   /// Overall progress between 0 and 1, like `UploadBatch.progress`.
   ///
   /// Finished uploads count as done whatever their outcome. Weighted by
   /// size when every size is known.
-  double get progress {
-    if (entries.isEmpty) return 1;
-    final bySize = (totalBytes ?? 0) > 0;
-    var done = 0.0;
-    var total = 0.0;
-    for (final entry in entries) {
-      final weight = bySize ? (entry.task.totalBytes ?? 0).toDouble() : 1.0;
-      total += weight;
-      done += switch (entry.state) {
-        TransferRunning(:final progress) => weight * (progress.fraction ?? 0),
-        final state when state.isFinished => weight,
-        _ => 0,
-      };
-    }
-    return total == 0 ? 1 : (done / total).clamp(0, 1).toDouble();
-  }
+  double get progress => uploadsProgress(_snapshots);
+
+  Iterable<UploadSnapshot> get _snapshots => entries.map(
+    (entry) => (state: entry.state, totalBytes: entry.task.totalBytes),
+  );
 
   int _count(bool Function(TransferState state) test) =>
       entries.where((e) => test(e.state)).length;

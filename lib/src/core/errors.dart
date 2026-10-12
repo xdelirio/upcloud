@@ -141,7 +141,7 @@ enum InvalidBackupReason {
   /// The file is a backup, but it is damaged or incomplete.
   corrupted,
 
-  /// The backup was made by a newer version of the package (or uses an
+  /// The backup was made by a newer version of the app (or uses an
   /// algorithm this version does not know): update the app to restore it.
   unsupported,
 }
@@ -180,6 +180,13 @@ final class NetworkException extends UpCloudException {
   /// Creates a network error.
   const NetworkException(super.message, {super.cause, super.stackTrace});
 }
+
+/// [error] as an [UpCloudException]: itself, or a [ProviderException]
+/// keeping it as the cause.
+UpCloudException wrapError(Object error, StackTrace stackTrace) =>
+    error is UpCloudException
+    ? error
+    : ProviderException('$error', cause: error, stackTrace: stackTrace);
 
 /// The operation was cancelled with a `CancellationToken`.
 final class CancelledException extends UpCloudException {

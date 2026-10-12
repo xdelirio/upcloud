@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:upcloud/testing.dart';
 import 'package:upcloud/upcloud.dart';
 
+import '../support/testing.dart';
 import '../support/wait.dart';
 
 void main() {
@@ -160,9 +160,9 @@ void main() {
       manager = createManager();
     });
 
-    test('describeRejection is readable', () {
+    test('describeUploadRejection is readable', () {
       expect(
-        describeRejection(
+        describeUploadRejection(
           const FileTooLarge(size: DataSize.gb(3), maxSize: DataSize.gb(2)),
         ),
         'File is too large (3.0 GB, max 2.0 GB)',

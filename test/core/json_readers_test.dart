@@ -94,6 +94,33 @@ void main() {
     expect(readSecondsDuration(-1), isNull);
   });
 
+  test('readJsonObject accepts decoded objects and JSON text', () {
+    expect(readJsonObject({'a': 1}), {'a': 1});
+    expect(readJsonObject(' {"a": 1}\n'), {'a': 1});
+    expect(readJsonObject('{"a": '), isNull);
+    expect(readJsonObject('[1]'), isNull);
+    expect(readJsonObject('<html></html>'), isNull);
+    expect(readJsonObject([1]), isNull);
+    expect(readJsonObject(null), isNull);
+  });
+
+  test('readPercent returns a fraction between 0 and 1', () {
+    expect(readPercent('55%'), closeTo(0.55, 1e-9));
+    expect(readPercent(91), closeTo(0.91, 1e-9));
+    expect(readPercent(12.5), closeTo(0.125, 1e-9));
+    expect(readPercent('250'), 1);
+    expect(readPercent(-3), 0);
+    expect(readPercent(''), isNull);
+    expect(readPercent(null), isNull);
+  });
+
+  test('readExtra keeps the unknown keys that have a value', () {
+    expect(
+      readExtra({'name': 'a', 'views': 3, 'thumb': null}, const {'name'}),
+      {'views': 3},
+    );
+  });
+
   test('readList and readMap are defensive', () {
     expect(readList([1, 2]), [1, 2]);
     expect(readList('x'), isEmpty);

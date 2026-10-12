@@ -8,8 +8,6 @@ Future<String?> showTextInputDialog(
   required String label,
   required String confirmLabel,
   String initialValue = '',
-  String? Function(String value)? validator,
-  TextInputType? keyboardType,
 }) => showDialog<String>(
   context: context,
   builder: (context) => _TextInputDialog(
@@ -17,8 +15,6 @@ Future<String?> showTextInputDialog(
     label: label,
     confirmLabel: confirmLabel,
     initialValue: initialValue,
-    validator: validator,
-    keyboardType: keyboardType,
   ),
 );
 
@@ -28,16 +24,12 @@ class _TextInputDialog extends StatefulWidget {
     required this.label,
     required this.confirmLabel,
     required this.initialValue,
-    required this.validator,
-    required this.keyboardType,
   });
 
   final String title;
   final String label;
   final String confirmLabel;
   final String initialValue;
-  final String? Function(String value)? validator;
-  final TextInputType? keyboardType;
 
   @override
   State<_TextInputDialog> createState() => _TextInputDialogState();
@@ -81,13 +73,9 @@ class _TextInputDialogState extends State<_TextInputDialog> {
         child: TextFormField(
           controller: _controller,
           autofocus: true,
-          keyboardType: widget.keyboardType,
           decoration: InputDecoration(labelText: widget.label),
-          validator: (value) {
-            final text = value?.trim() ?? '';
-            if (text.isEmpty) return l10n.nameRequired;
-            return widget.validator?.call(text);
-          },
+          validator: (value) =>
+              (value?.trim() ?? '').isEmpty ? l10n.nameRequired : null,
           onFieldSubmitted: (_) => _submit(),
         ),
       ),

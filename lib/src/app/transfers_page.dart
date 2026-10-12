@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:upcloud/src/app/page_scaffold.dart';
-import 'package:upcloud/src/app/strings.dart';
 import 'package:upcloud/ui.dart';
 
 /// Uploads with live progress.
@@ -11,10 +10,9 @@ class TransfersPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final strings = ExampleStrings.of(context);
     final l10n = UpCloudLocalizations.of(context);
     return PageScaffold(
-      title: Text(strings.transfers),
+      title: Text(l10n.transfers),
       actions: [
         ListenableBuilder(
           listenable: controller,

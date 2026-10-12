@@ -139,9 +139,6 @@ class UpCloudLocalizationsEn extends UpCloudLocalizations {
   String get linkCopied => 'Link copied';
 
   @override
-  String get noLinks => 'No links available';
-
-  @override
   String get move => 'Move';
 
   @override
@@ -182,9 +179,6 @@ class UpCloudLocalizationsEn extends UpCloudLocalizations {
 
   @override
   String get transferCancelled => 'Cancelled';
-
-  @override
-  String get transferFailed => 'Failed';
 
   @override
   String transferProgress(String transferred, String total) =>
@@ -319,39 +313,10 @@ class UpCloudLocalizationsEn extends UpCloudLocalizations {
   String get password => 'Password';
 
   @override
-  String get chooseProvider => 'Choose a provider';
-
-  @override
   String get noProviders => 'No providers available';
 
   @override
   String get provider => 'Provider';
-
-  @override
-  String maxFileSize(String size) => 'Max. file size: $size';
-
-  @override
-  String capability(Capability capability) => switch (capability) {
-    Capability.browseFolders => 'Browse',
-    Capability.createFolder => 'Create folders',
-    Capability.renameFolder => 'Rename folders',
-    Capability.moveFolder => 'Move folders',
-    Capability.deleteFolder => 'Delete folders',
-    Capability.fileInfo => 'File details',
-    Capability.renameFile => 'Rename files',
-    Capability.moveFile => 'Move files',
-    Capability.deleteFile => 'Delete files',
-    Capability.search => 'Search',
-    Capability.upload => 'Upload',
-    Capability.remoteUpload => 'Remote upload',
-    Capability.accountInfo => 'Account info',
-  };
-
-  @override
-  String get manageFoldersCapability => 'Folders';
-
-  @override
-  String get manageFilesCapability => 'Manage files';
 
   @override
   String configProblem(ConfigProblem problem) => switch (problem.code) {
@@ -507,6 +472,12 @@ class UpCloudLocalizationsEn extends UpCloudLocalizations {
 
   @override
   String lastChecked(String date) => 'Last checked: $date';
+
+  @override
+  String get invalidRegistryEntry => 'This entry cannot be read';
+
+  @override
+  String get duplicatedProviderId => 'Another provider uses this id';
 
   @override
   String unknownDriver(String id) => 'Unknown driver "$id"';
@@ -872,6 +843,84 @@ class UpCloudLocalizationsEn extends UpCloudLocalizations {
 
   @override
   String get backupUpToDate => 'Everything was already up to date';
+
+  @override
+  String get appTitle => 'UpCloud Files';
+
+  @override
+  String get startupFailed => 'Could not load your data';
+
+  @override
+  String get files => 'Files';
+
+  @override
+  String get transfers => 'Transfers';
+
+  @override
+  String get transfersTab => 'Transfers';
+
+  @override
+  String get connectTitle => 'Connect a cloud account';
+
+  @override
+  String get connectMessage =>
+      'Choose a provider and enter the credentials it asks for.';
+
+  @override
+  String get noAccountTitle => 'Connect an account first';
+
+  @override
+  String get noAccountMessage =>
+      'Add an account of one of your providers to see its files.';
+
+  @override
+  String get goToAccounts => 'Go to accounts';
+
+  @override
+  String get account => 'Account';
+
+  @override
+  String get settings => 'Settings';
+
+  @override
+  String get theme => 'Theme';
+
+  @override
+  String get language => 'Language';
+
+  @override
+  String get system => 'System';
+
+  @override
+  String get light => 'Light';
+
+  @override
+  String get dark => 'Dark';
+
+  @override
+  String get animatedBackground => 'Animated background';
+
+  @override
+  String get animatedBackgroundHint => 'Turn it off to save battery.';
+
+  @override
+  String get uploadsSection => 'Uploads';
+
+  @override
+  String get uploadsSectionHint => 'Applied right away to the upload queue.';
+
+  @override
+  String get appSection => 'App';
+
+  @override
+  String get appSectionHint => 'Look and language of the app.';
+
+  @override
+  String get backupFile => 'Encrypted file';
+
+  @override
+  String get backupSectionHint =>
+      'Move your accounts, providers and settings to another device.';
 
   String _duration(Duration delay) {
     if (delay.inHours > 0 && delay.inMinutes % 60 == 0) {

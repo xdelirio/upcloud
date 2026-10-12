@@ -62,11 +62,19 @@ class ContentPanel extends StatelessWidget {
       ? scheme.surfaceContainerLow
       : scheme.surfaceContainerLowest;
 
+  /// Outline of the panel for [scheme], rounded at [borderRadius].
+  static ShapeBorder shapeOf(
+    ColorScheme scheme, {
+    BorderRadius borderRadius = const BorderRadius.all(Radius.circular(28)),
+  }) => RoundedSuperellipseBorder(
+    borderRadius: borderRadius,
+    side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.35)),
+  );
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final compact = Breakpoints.isCompact(context);
-    const radius = Radius.circular(28);
     return Padding(
       padding: compact
           ? const EdgeInsets.fromLTRB(8, 4, 8, 0)
@@ -74,14 +82,14 @@ class ContentPanel extends StatelessWidget {
       child: Material(
         color: colorOf(scheme),
         clipBehavior: Clip.antiAlias,
-        shape: RoundedSuperellipseBorder(
-          borderRadius: compact
-              ? const BorderRadius.vertical(top: radius)
-              : const BorderRadius.all(radius),
-          side: BorderSide(
-            color: scheme.outlineVariant.withValues(alpha: 0.35),
-          ),
-        ),
+        shape: compact
+            ? shapeOf(
+                scheme,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(28),
+                ),
+              )
+            : shapeOf(scheme),
         child: child,
       ),
     );
@@ -125,12 +133,7 @@ class FormPageScaffold extends StatelessWidget {
               constraints: BoxConstraints(maxWidth: maxWidth),
               child: Material(
                 color: ContentPanel.colorOf(scheme),
-                shape: RoundedSuperellipseBorder(
-                  borderRadius: BorderRadius.circular(28),
-                  side: BorderSide(
-                    color: scheme.outlineVariant.withValues(alpha: 0.35),
-                  ),
-                ),
+                shape: ContentPanel.shapeOf(scheme),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
                   child: Column(
@@ -159,12 +162,16 @@ class FormHeader extends StatelessWidget {
     required this.title,
     required this.message,
     this.leading = const AppLogo(size: 48),
+    this.titleStyle,
     super.key,
   });
 
   final String title;
   final String message;
   final Widget leading;
+
+  /// Style of the [title]; a compact bold title by default.
+  final TextStyle? titleStyle;
 
   @override
   Widget build(BuildContext context) {
@@ -179,10 +186,12 @@ class FormHeader extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
+                style:
+                    titleStyle ??
+                    theme.textTheme.titleMedium?.copyWith(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
               ),
               const SizedBox(height: 4),
               Text(

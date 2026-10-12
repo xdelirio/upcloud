@@ -3,9 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:upcloud/src/controllers/accounts_controller.dart';
 import 'package:upcloud/src/l10n/upcloud_localizations.dart';
 import 'package:upcloud/src/scope/upcloud_scope.dart';
-import 'package:upcloud/src/widgets/accounts/provider_picker.dart';
+import 'package:upcloud/src/widgets/accounts/provider_avatar.dart';
+import 'package:upcloud/src/widgets/common/busy_button.dart';
 import 'package:upcloud/src/widgets/common/dialogs.dart';
 import 'package:upcloud/src/widgets/common/message_view.dart';
+import 'package:upcloud/src/widgets/common/notice_box.dart';
+import 'package:upcloud/src/widgets/common/secret_visibility_button.dart';
 import 'package:upcloud/upcloud.dart';
 
 final _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
@@ -16,7 +19,9 @@ final _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 /// one of [providers] and the credential fields follow the selection.
 ///
 /// Each [CredentialField] becomes an input (text, secret, email or URL)
-/// with validation and an optional help link. Submitting calls
+/// with validation and an optional help link, which is copied to the
+/// clipboard. An optional account name and the API base URL override are
+/// offered too. Submitting calls
 /// `UpCloud.addAccount` (through [controller] when given) and reports
 /// errors such as [AuthenticationException] inline.
 ///
@@ -30,16 +35,10 @@ class AccountForm extends StatefulWidget {
   const AccountForm({
     this.provider,
     this.providers,
-    this.initialProviderId,
     this.upcloud,
     this.controller,
     this.onAdded,
     this.verify = true,
-    this.showHeader = true,
-    this.showLabelField = true,
-    this.showAdvanced = true,
-    this.onOpenHelpUrl,
-    this.submitLabel,
     super.key,
   });
 
@@ -47,11 +46,9 @@ class AccountForm extends StatefulWidget {
   /// dropdown is shown.
   final ProviderDefinition? provider;
 
-  /// Providers offered in the dropdown when [provider] is `null`.
+  /// Providers offered in the dropdown when [provider] is `null`. The first
+  /// one is selected initially.
   final List<ProviderDefinition>? providers;
-
-  /// Provider selected initially in the dropdown. Defaults to the first.
-  final String? initialProviderId;
 
   /// Instance used to add the account. Defaults to the [UpCloudScope].
   final UpCloud? upcloud;
@@ -64,23 +61,6 @@ class AccountForm extends StatefulWidget {
 
   /// Whether to check the credentials before saving the account.
   final bool verify;
-
-  /// Whether to show the provider name above the fields when [provider] is
-  /// fixed.
-  final bool showHeader;
-
-  /// Whether to ask for an optional account name.
-  final bool showLabelField;
-
-  /// Whether to offer the API base URL override.
-  final bool showAdvanced;
-
-  /// Opens help links (e.g. with `url_launcher`). When `null` the link is
-  /// copied to the clipboard.
-  final ValueChanged<Uri>? onOpenHelpUrl;
-
-  /// Label of the submit button. Defaults to "Connect".
-  final String? submitLabel;
 
   @override
   State<AccountForm> createState() => _AccountFormState();
@@ -110,10 +90,7 @@ class _AccountFormState extends State<AccountForm> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (widget.provider == null && _selected == null) {
-      final choices = _choices;
-      _selected =
-          choices.where((p) => p.id == widget.initialProviderId).firstOrNull ??
-          choices.firstOrNull;
+      _selected = _choices.firstOrNull;
     }
     _syncFields();
   }
@@ -213,11 +190,6 @@ class _AccountFormState extends State<AccountForm> {
   }
 
   Future<void> _openHelp(Uri url) async {
-    final open = widget.onOpenHelpUrl;
-    if (open != null) {
-      open(url);
-      return;
-    }
     await Clipboard.setData(ClipboardData(text: url.toString()));
     if (mounted) {
       showUpCloudSnackBar(context, UpCloudLocalizations.of(context).linkCopied);
@@ -276,7 +248,7 @@ class _AccountFormState extends State<AccountForm> {
                       ),
               ),
               const SizedBox(height: 16),
-            ] else if (widget.showHeader) ...[
+            ] else ...[
               Row(
                 children: [
                   ProviderAvatar(info: info),
@@ -291,70 +263,63 @@ class _AccountFormState extends State<AccountForm> {
               ),
               const SizedBox(height: 24),
             ],
-            if (widget.showLabelField) ...[
-              TextFormField(
-                key: const ValueKey('upcloud-account-label'),
-                controller: _label,
-                enabled: !_submitting,
-                textInputAction: TextInputAction.next,
-                decoration: InputDecoration(
-                  labelText: l10n.accountName,
-                  helperText: l10n.optional,
-                  prefixIcon: const Icon(Icons.label_outline_rounded),
-                ),
+            TextFormField(
+              key: const ValueKey('upcloud-account-label'),
+              controller: _label,
+              enabled: !_submitting,
+              textInputAction: TextInputAction.next,
+              decoration: InputDecoration(
+                labelText: l10n.accountName,
+                helperText: l10n.optional,
+                prefixIcon: const Icon(Icons.label_outline_rounded),
               ),
-              const SizedBox(height: 16),
-            ],
+            ),
+            const SizedBox(height: 16),
             for (final (index, field) in fields.indexed) ...[
               _buildField(context, field, isLast: index == fields.length - 1),
               if (field.helpUrl case final url?)
                 _HelpLink(url: url, onTap: () => _openHelp(url)),
               const SizedBox(height: 16),
             ],
-            if (widget.showAdvanced)
-              Theme(
-                data: material.copyWith(dividerColor: Colors.transparent),
-                child: ExpansionTile(
-                  tilePadding: EdgeInsets.zero,
-                  childrenPadding: const EdgeInsets.only(bottom: 16),
-                  title: Text(l10n.advanced),
-                  children: [
-                    TextFormField(
-                      key: const ValueKey('upcloud-account-base-url'),
-                      controller: _baseUrl,
-                      enabled: !_submitting,
-                      keyboardType: TextInputType.url,
-                      decoration: InputDecoration(
-                        labelText: l10n.baseUrl,
-                        hintText: provider.defaultBaseUrl?.toString(),
-                        helperText: l10n.baseUrlHelper,
-                        helperMaxLines: 2,
-                        prefixIcon: const Icon(Icons.dns_outlined),
-                      ),
-                      validator: (value) {
-                        final text = value?.trim() ?? '';
-                        if (text.isEmpty) return null;
-                        return parseHttpUrl(text) == null
-                            ? l10n.invalidUrl
-                            : null;
-                      },
+            Theme(
+              data: material.copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: const EdgeInsets.only(bottom: 16),
+                title: Text(l10n.advanced),
+                children: [
+                  TextFormField(
+                    key: const ValueKey('upcloud-account-base-url'),
+                    controller: _baseUrl,
+                    enabled: !_submitting,
+                    keyboardType: TextInputType.url,
+                    decoration: InputDecoration(
+                      labelText: l10n.baseUrl,
+                      hintText: provider.defaultBaseUrl?.toString(),
+                      helperText: l10n.baseUrlHelper,
+                      helperMaxLines: 2,
+                      prefixIcon: const Icon(Icons.dns_outlined),
                     ),
-                  ],
-                ),
+                    validator: (value) {
+                      final text = value?.trim() ?? '';
+                      if (text.isEmpty) return null;
+                      return parseHttpUrl(text) == null
+                          ? l10n.invalidUrl
+                          : null;
+                    },
+                  ),
+                ],
               ),
+            ),
             if (error != null) ...[
               _ErrorBanner(error: error),
               const SizedBox(height: 16),
             ],
-            FilledButton.icon(
-              onPressed: _submitting ? null : _submit,
-              icon: _submitting
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.login_rounded),
-              label: Text(widget.submitLabel ?? l10n.connect),
+            BusyButton(
+              busy: _submitting,
+              icon: Icons.login_rounded,
+              label: l10n.connect,
+              onPressed: _submit,
             ),
           ],
         ),
@@ -398,7 +363,7 @@ class _AccountFormState extends State<AccountForm> {
       textInputAction: isLast ? TextInputAction.done : TextInputAction.next,
       onFieldSubmitted: isLast ? (_) => _submit() : null,
       decoration: InputDecoration(
-        labelText: mustFill ? label : '$label (${l10n.optional})',
+        labelText: mustFill ? label : l10n.optionalLabel(label),
         hintText: field.defaultValue,
         helperText: field.hint,
         helperMaxLines: 3,
@@ -409,13 +374,8 @@ class _AccountFormState extends State<AccountForm> {
           CredentialInputKind.url => Icons.link_rounded,
         }),
         suffixIcon: isSecret
-            ? IconButton(
-                icon: Icon(
-                  revealed
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined,
-                ),
-                tooltip: revealed ? l10n.hideSecret : l10n.showSecret,
+            ? SecretVisibilityButton(
+                obscured: !revealed,
                 onPressed: () => setState(() {
                   if (!_revealed.remove(field.id)) _revealed.add(field.id);
                 }),
@@ -491,55 +451,20 @@ class _ErrorBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = UpCloudLocalizations.of(context);
-    final material = Theme.of(context);
-    final scheme = material.colorScheme;
     final title = l10n.errorMessage(error);
     final details = error.message.trim();
     final showDetails =
         error is! ProviderException && details.isNotEmpty && details != title;
     return Semantics(
       liveRegion: true,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: scheme.errorContainer,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              error is AuthenticationException
-                  ? Icons.lock_outline_rounded
-                  : Icons.error_outline_rounded,
-              color: scheme.onErrorContainer,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: material.textTheme.bodyMedium?.copyWith(
-                      color: scheme.onErrorContainer,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  if (showDetails) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      details,
-                      style: material.textTheme.bodySmall?.copyWith(
-                        color: scheme.onErrorContainer,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
+      child: NoticeBox(
+        icon: error is AuthenticationException
+            ? Icons.lock_outline_rounded
+            : Icons.error_outline_rounded,
+        title: title,
+        children: [
+          if (showDetails) ...[const SizedBox(height: 4), Text(details)],
+        ],
       ),
     );
   }

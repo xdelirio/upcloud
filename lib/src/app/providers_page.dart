@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:upcloud/src/app/glass_chrome.dart';
 import 'package:upcloud/src/app/page_scaffold.dart';
+import 'package:upcloud/src/widgets/common/message_view.dart';
 import 'package:upcloud/ui.dart';
 
 /// Manages the provider registry: enable, edit, reset, add custom
@@ -33,13 +34,10 @@ class ProvidersPage extends StatelessWidget {
       ),
     );
     if (saved != null && context.mounted) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(UpCloudLocalizations.of(context).providerSaved),
-          ),
-        );
+      showUpCloudSnackBar(
+        context,
+        UpCloudLocalizations.of(context).providerSaved,
+      );
     }
   }
 

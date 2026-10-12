@@ -62,6 +62,10 @@ flutter test integration_test -d macos
 flutter run
 ```
 
+Android release builds are signed with the key described in
+`android/key.properties` (git-ignored: `storeFile`, `storePassword`,
+`keyAlias`, `keyPassword`); without that file they use the debug key.
+
 Live tests against the real APIs are described in
 [CONTRIBUTING.md](CONTRIBUTING.md), which also explains how to add
 providers or drivers.

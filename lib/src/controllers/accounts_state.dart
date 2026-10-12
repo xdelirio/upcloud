@@ -43,14 +43,6 @@ abstract class AccountsState with _$AccountsState {
 
   const AccountsState._();
 
-  /// Account with [id], or `null`.
-  CloudAccount? account(String id) {
-    for (final account in accounts) {
-      if (account.id == id) return account;
-    }
-    return null;
-  }
-
   /// Last connection check of account [id], or `null` if never checked.
   AccountStatus? statusOf(String id) => statuses[id];
 }

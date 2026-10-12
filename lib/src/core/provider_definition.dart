@@ -37,7 +37,7 @@ abstract class ProviderOptions with _$ProviderOptions {
   /// Creates provider options.
   const factory ProviderOptions({
     /// Replaces the provider's API base URL. Useful when a service moves to
-    /// a new domain before the package is updated.
+    /// a new domain before the app is updated.
     Uri? baseUrl,
 
     /// Alternative API base URLs tried in order when the base URL cannot be

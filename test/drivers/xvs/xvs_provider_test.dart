@@ -17,10 +17,9 @@ import 'package:upcloud/src/core/provider_limits.dart';
 import 'package:upcloud/src/drivers/xvs/xvs.dart';
 import 'package:upcloud/src/settings/upload_settings.dart';
 import 'package:upcloud/src/transfer/transfer_manager.dart';
-import 'package:upcloud/testing.dart';
 
 import '../../support/bundled_providers.dart';
-
+import '../../support/testing.dart';
 import 'xvs_harness.dart';
 
 void main() {
@@ -539,6 +538,27 @@ void main() {
       expect(TransferManager.isRetryable(error! as ProviderException), isTrue);
     });
 
+    test('an upload server 429 keeps Retry-After', () async {
+      final request = await prepare();
+
+      await expectLater(
+        h.provider.completeUpload(
+          request,
+          reply({
+            'msg': 'Too many requests',
+            'status': 429,
+          }, status: 429).copyWith(headers: {'Retry-After': '12'}),
+        ),
+        throwsA(
+          isA<RateLimitedException>().having(
+            (e) => e.retryAfter,
+            'retryAfter',
+            const Duration(seconds: 12),
+          ),
+        ),
+      );
+    });
+
     test('runs through TransferManager with an executor', () async {
       h
         ..onGet('upload/server', fixture('upload_server'))
@@ -698,6 +718,47 @@ void main() {
         ),
       );
     });
+
+    test('HTTP 429 keeps Retry-After over the API message', () async {
+      h.onGet(
+        'account/info',
+        {'msg': 'Too many requests', 'status': 429},
+        status: 429,
+        headers: const {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+          'retry-after': ['7'],
+        },
+      );
+
+      await expectLater(
+        h.provider.accountInfo(),
+        throwsA(
+          isA<RateLimitedException>().having(
+            (e) => e.retryAfter,
+            'retryAfter',
+            const Duration(seconds: 7),
+          ),
+        ),
+      );
+    });
+
+    test(
+      'listFolder throws the error of the failed request as it is',
+      () async {
+        h
+          ..onGet('folder/list', fixture('folder_list'), query: {'fld_id': '0'})
+          ..onGet(
+            'file/list',
+            fixture('invalid_key'),
+            query: {'fld_id': '0', 'page': '1', 'per_page': '50'},
+          );
+
+        await expectLater(
+          h.provider.listFolder(null),
+          throwsA(isA<AuthenticationException>()),
+        );
+      },
+    );
 
     test('maps 404 to NotFoundException', () async {
       h.onGet('file/delete', fixture('file_not_found'));

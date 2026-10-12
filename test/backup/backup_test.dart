@@ -2,14 +2,25 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:upcloud/src/backup/backup_envelope.dart';
-import 'package:upcloud/testing.dart';
 import 'package:upcloud/upcloud.dart';
+
+import '../support/testing.dart';
 
 /// Cheap key derivation so tests run fast (production uses
 /// [Argon2idParams.recommended]).
 const cheapKdf = Argon2idParams(memoryKiB: 64, iterations: 1);
 
 const password = 'correct horse';
+
+/// A store whose writes fail, like a full or locked disk.
+final class _ReadOnlyAccountStore implements AccountStore {
+  @override
+  Future<List<CloudAccount>> load() async => const [];
+
+  @override
+  Future<void> save(List<CloudAccount> accounts) async =>
+      throw StateError('disk full');
+}
 
 void main() {
   late FakeUploadExecutor executor;
@@ -350,6 +361,22 @@ void main() {
         ),
       );
       expect(target.accounts, isEmpty);
+    });
+
+    test('accounts that cannot be saved change nothing', () async {
+      final source = await create(
+        accounts: InMemoryAccountStore([account('a')]),
+      );
+      await source.registry.setEnabled('byse', enabled: false);
+      final json = await source.exportBackup(password: password);
+      final target = await create(accounts: _ReadOnlyAccountStore());
+
+      await expectLater(
+        target.importBackup(json, password: password),
+        throwsStateError,
+      );
+      expect(target.accounts, isEmpty);
+      expect(target.registry.config('byse')?.enabled, isTrue);
     });
 
     test('detects a modified payload', () async {

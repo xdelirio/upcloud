@@ -61,4 +61,35 @@ abstract class ProviderLimits with _$ProviderLimits {
     }
     return null;
   }
+
+  /// Throws an [UploadRejectedException] when a file with [extension] and
+  /// [size] cannot be uploaded (see [check]).
+  void ensureAccepts({
+    required String extension,
+    DataSize? size,
+    DataSize? storageLeft,
+  }) {
+    final rejection = check(
+      extension: extension,
+      size: size,
+      storageLeft: storageLeft,
+    );
+    if (rejection != null) {
+      throw UploadRejectedException(
+        describeUploadRejection(rejection),
+        reason: rejection,
+      );
+    }
+  }
 }
+
+/// A short English description of [rejection].
+String describeUploadRejection(UploadRejection rejection) =>
+    switch (rejection) {
+      FileTooLarge(:final size, :final maxSize) =>
+        'File is too large ($size, max $maxSize)',
+      ExtensionNotAllowed(:final extension) =>
+        'File type ".$extension" is not allowed',
+      NotEnoughStorage(:final size, :final available) =>
+        'Not enough storage ($size needed, $available available)',
+    };

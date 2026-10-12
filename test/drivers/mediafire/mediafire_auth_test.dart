@@ -1,6 +1,8 @@
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http_mock_adapter/http_mock_adapter.dart';
 import 'package:upcloud/src/drivers/mediafire/mediafire_api.dart';
 import 'package:upcloud/upcloud.dart';
 
@@ -343,6 +345,34 @@ void main() {
         'user/get_info',
       ]);
     });
+  });
+
+  test('HTTP 429 keeps Retry-After over the API error', () async {
+    mf
+      ..login()
+      ..adapter.onPost(
+        'user/get_info.php',
+        (server) => server.reply(
+          429,
+          apiError(163, 'API access limit reached'),
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+            'retry-after': ['9'],
+          },
+        ),
+        data: Matchers.any,
+      );
+
+    await expectLater(
+      mf.provider().accountInfo(),
+      throwsA(
+        isA<RateLimitedException>().having(
+          (e) => e.retryAfter,
+          'retryAfter',
+          const Duration(seconds: 9),
+        ),
+      ),
+    );
   });
 
   test('a closed provider rejects calls', () async {

@@ -7,12 +7,14 @@ import 'package:upcloud/src/l10n/upcloud_localizations.dart';
 import 'package:upcloud/src/scope/upcloud_scope.dart';
 import 'package:upcloud/src/theme/upcloud_theme.dart';
 import 'package:upcloud/src/utils/file_kind.dart';
-import 'package:upcloud/src/widgets/accounts/provider_picker.dart';
+import 'package:upcloud/src/widgets/accounts/provider_avatar.dart';
 import 'package:upcloud/src/widgets/browser/cloud_browser.dart'
     show PickUploadSources;
 import 'package:upcloud/src/widgets/common/folder_path_field.dart';
+import 'package:upcloud/src/widgets/common/labeled_row.dart';
 import 'package:upcloud/src/widgets/common/message_view.dart';
 import 'package:upcloud/src/widgets/common/section.dart';
+import 'package:upcloud/src/widgets/common/tinted_icon_box.dart';
 import 'package:upcloud/src/widgets/settings/upload_settings_form.dart'
     show VisibilitySelector;
 import 'package:upcloud/upcloud.dart';
@@ -22,7 +24,7 @@ import 'package:upcloud/upcloud.dart';
 ///
 /// Sections:
 ///
-/// * **Files**: the files to upload, added with [onPickFiles] (the package
+/// * **Files**: the files to upload, added with [onPickFiles] (the app
 ///   does not depend on a file picker).
 /// * **Accounts**: the accounts that can receive uploads, grouped by
 ///   provider.
@@ -54,8 +56,6 @@ class UploadComposer extends StatefulWidget {
     this.controller,
     this.showSubmitButton = true,
     this.padding = const EdgeInsets.all(16),
-    this.maxContentWidth = 720,
-    this.maxSkippedShown = 4,
     super.key,
   });
 
@@ -77,12 +77,6 @@ class UploadComposer extends StatefulWidget {
   /// Padding of the scroll view.
   final EdgeInsets padding;
 
-  /// Maximum width of the content, centered on wide layouts.
-  final double maxContentWidth;
-
-  /// Skipped uploads listed before "and N more".
-  final int maxSkippedShown;
-
   @override
   State<UploadComposer> createState() => _UploadComposerState();
 }
@@ -101,6 +95,9 @@ UploadBatch? submitComposer(
 }
 
 class _UploadComposerState extends State<UploadComposer> {
+  /// Maximum width of the content, centered on wide layouts.
+  static const _maxContentWidth = 720.0;
+
   UploadComposerController? _internal;
   final _folder = TextEditingController();
   final _folderFocus = FocusNode();
@@ -193,8 +190,7 @@ class _UploadComposerState extends State<UploadComposer> {
         final padding = widget.padding;
         final extra = math.max(
           0,
-          (constraints.maxWidth - padding.horizontal - widget.maxContentWidth) /
-              2,
+          (constraints.maxWidth - padding.horizontal - _maxContentWidth) / 2,
         );
         return ListenableBuilder(
           listenable: controller,
@@ -213,10 +209,7 @@ class _UploadComposerState extends State<UploadComposer> {
               _AccountsSection(controller: controller),
               if (controller.skipped.isNotEmpty) ...[
                 const SizedBox(height: 16),
-                _SkippedCard(
-                  skipped: controller.skipped,
-                  maxShown: widget.maxSkippedShown,
-                ),
+                _SkippedCard(skipped: controller.skipped),
               ],
               const SizedBox(height: 24),
               _DestinationSection(
@@ -263,6 +256,11 @@ class _FilesSection extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final files = controller.files;
+    // Accounts every file is skipped for, indexed once for all the tiles.
+    final skippedFor = Map<UploadSource, List<String>>.identity();
+    for (final skipped in controller.skipped) {
+      (skippedFor[skipped.file] ??= []).add(skipped.account.label);
+    }
     final addButton = TextButton.icon(
       key: const ValueKey('upcloud-composer-add-files'),
       onPressed: picking ? null : onAdd,
@@ -315,10 +313,7 @@ class _FilesSection extends StatelessWidget {
               key: ValueKey('upcloud-composer-file-$index'),
               file: file,
               size: controller.sizeOf(file),
-              skippedFor: [
-                for (final s in controller.skipped)
-                  if (identical(s.file, file)) s.account.label,
-              ],
+              skippedFor: skippedFor[file] ?? const [],
               removeKey: ValueKey('upcloud-composer-remove-$index'),
               onRemove: () => controller.removeFile(file),
             ),
@@ -350,22 +345,16 @@ class _FileTile extends StatelessWidget {
     final l10n = UpCloudLocalizations.of(context);
     final theme = UpCloudTheme.of(context);
     final kind = CloudFileKind.fromName(file.name);
-    final color = theme.colorFor(kind);
-    final extent = theme.thumbnailSize;
     final size = this.size;
     final details = [
       if (size != null) l10n.formatBytes(size),
       if (file.extension.isNotEmpty) file.extension.toUpperCase(),
     ].join(' · ');
     return ListTile(
-      leading: Container(
-        width: extent,
-        height: extent,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(extent / 4),
-        ),
-        child: Icon(kind.icon, color: color, size: extent * 0.6),
+      leading: TintedIconBox(
+        icon: kind.icon,
+        color: theme.colorFor(kind),
+        size: theme.thumbnailSize,
       ),
       title: Text(file.name, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: skippedFor.isEmpty
@@ -554,7 +543,6 @@ class _DestinationSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = UpCloudLocalizations.of(context);
-    final theme = Theme.of(context);
     return UpCloudSection(
       title: l10n.destinationSection,
       children: [
@@ -570,19 +558,12 @@ class _DestinationSection extends StatelessWidget {
             onChanged: (value) => controller.folderPath = value,
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(l10n.visibilityLabel, style: theme.textTheme.bodyLarge),
-              const SizedBox(height: 12),
-              VisibilitySelector(
-                key: const ValueKey('upcloud-composer-visibility'),
-                value: controller.visibility,
-                onChanged: (value) => controller.visibility = value,
-              ),
-            ],
+        LabeledRow(
+          title: l10n.visibilityLabel,
+          child: VisibilitySelector(
+            key: const ValueKey('upcloud-composer-visibility'),
+            value: controller.visibility,
+            onChanged: (value) => controller.visibility = value,
           ),
         ),
       ],
@@ -591,17 +572,19 @@ class _DestinationSection extends StatelessWidget {
 }
 
 class _SkippedCard extends StatelessWidget {
-  const _SkippedCard({required this.skipped, required this.maxShown});
+  const _SkippedCard({required this.skipped});
+
+  /// Skipped uploads listed before "and N more".
+  static const _maxShown = 4;
 
   final List<SkippedUpload> skipped;
-  final int maxShown;
 
   @override
   Widget build(BuildContext context) {
     final l10n = UpCloudLocalizations.of(context);
     final theme = Theme.of(context);
     final warning = UpCloudTheme.of(context).warningColor;
-    final shown = skipped.take(maxShown).toList();
+    final shown = skipped.take(_maxShown).toList();
     final hidden = skipped.length - shown.length;
     final small = theme.textTheme.bodySmall;
     return DecoratedBox(

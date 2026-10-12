@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:upcloud/testing.dart';
 import 'package:upcloud/ui.dart';
 
+import '../support/testing.dart';
 import 'helpers.dart';
 
 /// Two providers: a video host limited to 1 KB video files and a file host

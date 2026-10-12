@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:upcloud/src/core/cancellation.dart';
 import 'package:upcloud/src/core/capabilities/capabilities.dart';
 import 'package:upcloud/src/core/credentials.dart';
 import 'package:upcloud/src/core/errors.dart';
@@ -231,8 +232,9 @@ final class InMemoryProvider
   @override
   Future<CloudFile> completeUpload(
     UploadRequest request,
-    UploadResponse response,
-  ) async {
+    UploadResponse response, {
+    CancellationToken? cancelToken,
+  }) async {
     await _delay();
     if (!response.isSuccessful) throw uploadResponseException(response);
     final context = request.context;

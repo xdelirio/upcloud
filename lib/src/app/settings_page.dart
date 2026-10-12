@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:upcloud/src/app/file_io.dart';
 import 'package:upcloud/src/app/page_scaffold.dart';
 import 'package:upcloud/src/app/settings.dart';
-import 'package:upcloud/src/app/strings.dart';
 import 'package:upcloud/ui.dart';
 
 /// Upload settings, the app theme and language, and
@@ -10,88 +9,69 @@ import 'package:upcloud/ui.dart';
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
+  Widget _sectionHeader(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String message,
+  }) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return FormHeader(
+      title: title,
+      message: message,
+      titleStyle: theme.textTheme.titleLarge,
+      leading: DecoratedBox(
+        decoration: BoxDecoration(
+          color: scheme.primaryContainer,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Icon(icon, color: scheme.onPrimaryContainer),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final strings = ExampleStrings.of(context);
+    final l10n = UpCloudLocalizations.of(context);
     return FormPageScaffold(
-      title: strings.settings,
+      title: l10n.settings,
       maxWidth: 640,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _PageSection(
+          _sectionHeader(
+            context,
             icon: Icons.cloud_upload_outlined,
-            title: strings.uploadsSection,
-            message: strings.uploadsSectionHint,
+            title: l10n.uploadsSection,
+            message: l10n.uploadsSectionHint,
           ),
           const SizedBox(height: 16),
           // Saves every change with UpCloud.updateSettings.
           const UploadSettingsForm(),
           const SizedBox(height: 40),
-          _PageSection(
+          _sectionHeader(
+            context,
             icon: Icons.palette_outlined,
-            title: strings.appSection,
-            message: strings.appSectionHint,
+            title: l10n.appSection,
+            message: l10n.appSectionHint,
           ),
           const SizedBox(height: 16),
           const _AppSettings(),
           const SizedBox(height: 40),
-          _PageSection(
+          _sectionHeader(
+            context,
             icon: Icons.settings_backup_restore_rounded,
-            title: strings.backupSection,
-            message: strings.backupSectionHint,
+            title: l10n.backupSection,
+            message: l10n.backupSectionHint,
           ),
           const SizedBox(height: 16),
           const _Backup(),
         ],
       ),
-    );
-  }
-}
-
-class _PageSection extends StatelessWidget {
-  const _PageSection({
-    required this.icon,
-    required this.title,
-    required this.message,
-  });
-
-  final IconData icon;
-  final String title;
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    return Row(
-      children: [
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: scheme.primaryContainer,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: Icon(icon, color: scheme.onPrimaryContainer),
-          ),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: theme.textTheme.titleLarge),
-              Text(
-                message,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
@@ -105,7 +85,7 @@ class _Backup extends StatelessWidget {
   Widget build(BuildContext context) {
     final notifier = AppSettingsScope.of(context);
     return BackupSection(
-      title: ExampleStrings.of(context).backupFile,
+      title: UpCloudLocalizations.of(context).backupFile,
       onSave: saveBackupFile,
       onOpen: openBackupFile,
       exportExtra: () => notifier.value.toJson(),
@@ -120,7 +100,7 @@ class _AppSettings extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final strings = ExampleStrings.of(context);
+    final l10n = UpCloudLocalizations.of(context);
     final notifier = AppSettingsScope.of(context);
     final settings = notifier.value;
 
@@ -138,15 +118,15 @@ class _AppSettings extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         section(
-          strings.theme,
+          l10n.theme,
           SegmentedButton<ThemeMode>(
             key: const ValueKey('settings-theme'),
             showSelectedIcon: false,
             segments: [
               for (final (mode, label) in [
-                (ThemeMode.system, strings.system),
-                (ThemeMode.light, strings.light),
-                (ThemeMode.dark, strings.dark),
+                (ThemeMode.system, l10n.system),
+                (ThemeMode.light, l10n.light),
+                (ThemeMode.dark, l10n.dark),
               ])
                 ButtonSegment(value: mode, label: Text(label)),
             ],
@@ -157,12 +137,12 @@ class _AppSettings extends StatelessWidget {
         ),
         const SizedBox(height: 24),
         section(
-          strings.language,
+          l10n.language,
           SegmentedButton<String>(
             key: const ValueKey('settings-language'),
             showSelectedIcon: false,
             segments: [
-              ButtonSegment(value: '', label: Text(strings.system)),
+              ButtonSegment(value: '', label: Text(l10n.system)),
               const ButtonSegment(value: 'en', label: Text('English')),
               const ButtonSegment(value: 'es', label: Text('Español')),
             ],
@@ -174,6 +154,19 @@ class _AppSettings extends StatelessWidget {
               );
             },
           ),
+        ),
+        const SizedBox(height: 24),
+        UpCloudSection(
+          title: l10n.animatedBackground,
+          children: [
+            SwitchListTile(
+              key: const ValueKey('settings-animated-background'),
+              title: Text(l10n.animatedBackgroundHint),
+              value: settings.animatedBackground,
+              onChanged: (value) =>
+                  notifier.value = settings.copyWith(animatedBackground: value),
+            ),
+          ],
         ),
       ],
     );

@@ -1,3 +1,4 @@
+import 'package:upcloud/src/core/cancellation.dart';
 import 'package:upcloud/src/core/models/account_info.dart';
 import 'package:upcloud/src/core/models/cloud_entry.dart';
 import 'package:upcloud/src/core/models/ids.dart';
@@ -185,12 +186,15 @@ abstract interface class FileUploading implements CloudProvider {
   /// Reads the server [response] to [request] (as returned by
   /// [prepareUpload]) and returns the uploaded file.
   ///
-  /// May call the API (e.g. to wait until the file is processed). Throws
-  /// the matching `UpCloudException` when the upload failed.
+  /// May call the API (e.g. to wait until the file is processed); a long
+  /// wait stops with a `CancelledException` when [cancelToken] is
+  /// cancelled. Throws the matching `UpCloudException` when the upload
+  /// failed.
   Future<CloudFile> completeUpload(
     UploadRequest request,
-    UploadResponse response,
-  );
+    UploadResponse response, {
+    CancellationToken? cancelToken,
+  });
 }
 
 /// Asks the provider to download a file from a URL ("remote upload").

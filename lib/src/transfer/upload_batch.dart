@@ -83,49 +83,19 @@ final class UploadBatch {
   ];
 
   /// Size of every upload in bytes, or `null` while a size is unknown.
-  int? get totalBytes {
-    var total = 0;
-    for (final task in tasks) {
-      final bytes = task.totalBytes;
-      if (bytes == null) return null;
-      total += bytes;
-    }
-    return total;
-  }
+  int? get totalBytes => totalUploadBytes(_snapshots);
 
   /// Bytes sent by running uploads plus the size of completed ones.
-  int get transferredBytes {
-    var sent = 0;
-    for (final task in tasks) {
-      sent += switch (task.state) {
-        TransferCompleted() => task.totalBytes ?? 0,
-        TransferRunning(:final progress) => progress.transferred,
-        _ => 0,
-      };
-    }
-    return sent;
-  }
+  int get transferredBytes => transferredUploadBytes(_snapshots);
 
   /// Overall progress between 0 and 1.
   ///
   /// Finished tasks count as done whatever their outcome, so it reaches 1
   /// when [isFinished]. Weighted by size when every size is known.
-  double get progress {
-    if (tasks.isEmpty) return 1;
-    final bySize = (totalBytes ?? 0) > 0;
-    var done = 0.0;
-    var total = 0.0;
-    for (final task in tasks) {
-      final weight = bySize ? (task.totalBytes ?? 0).toDouble() : 1.0;
-      total += weight;
-      done += switch (task.state) {
-        TransferRunning(:final progress) => weight * (progress.fraction ?? 0),
-        final state when state.isFinished => weight,
-        _ => 0,
-      };
-    }
-    return total == 0 ? 1 : (done / total).clamp(0, 1).toDouble();
-  }
+  double get progress => uploadsProgress(_snapshots);
+
+  Iterable<UploadSnapshot> get _snapshots =>
+      tasks.map((task) => (state: task.state, totalBytes: task.totalBytes));
 
   /// The uploaded files, in task order, once every task finished.
   ///
@@ -144,4 +114,51 @@ final class UploadBatch {
 
   int _count(bool Function(TransferState state) test) =>
       tasks.where((task) => test(task.state)).length;
+}
+
+/// State and size of one upload of a group (a batch).
+typedef UploadSnapshot = ({TransferState state, int? totalBytes});
+
+/// Size of [uploads] in bytes, or `null` while a size is unknown.
+int? totalUploadBytes(Iterable<UploadSnapshot> uploads) {
+  var total = 0;
+  for (final upload in uploads) {
+    final bytes = upload.totalBytes;
+    if (bytes == null) return null;
+    total += bytes;
+  }
+  return total;
+}
+
+/// Bytes sent by the running [uploads] plus the size of completed ones.
+int transferredUploadBytes(Iterable<UploadSnapshot> uploads) {
+  var sent = 0;
+  for (final upload in uploads) {
+    sent += switch (upload.state) {
+      TransferCompleted() => upload.totalBytes ?? 0,
+      TransferRunning(:final progress) => progress.transferred,
+      _ => 0,
+    };
+  }
+  return sent;
+}
+
+/// Overall progress of [uploads] between 0 and 1 (1 when there are none).
+///
+/// Finished uploads count as done whatever their outcome. Weighted by size
+/// when every size is known.
+double uploadsProgress(Iterable<UploadSnapshot> uploads) {
+  final bySize = (totalUploadBytes(uploads) ?? 0) > 0;
+  var done = 0.0;
+  var total = 0.0;
+  for (final upload in uploads) {
+    final weight = bySize ? (upload.totalBytes ?? 0).toDouble() : 1.0;
+    total += weight;
+    done += switch (upload.state) {
+      TransferRunning(:final progress) => weight * (progress.fraction ?? 0),
+      final state when state.isFinished => weight,
+      _ => 0,
+    };
+  }
+  return total == 0 ? 1 : (done / total).clamp(0, 1).toDouble();
 }

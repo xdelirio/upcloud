@@ -1,6 +1,4 @@
-import 'package:upcloud/src/uploads/background_upload_stub.dart'
-    if (dart.library.io) 'package:upcloud/src/uploads/background_upload_io.dart'
-    as platform;
+import 'package:upcloud/src/uploads/background_upload_io.dart' as platform;
 import 'package:upcloud/src/uploads/upload_notifications.dart';
 import 'package:upcloud/upcloud.dart';
 
@@ -59,9 +57,9 @@ import 'package:upcloud/upcloud.dart';
 ///   the task until the network is back, so it is cancelled instead and the
 ///   `TransferManager` decides whether to retry).
 /// * [NotFoundException] when the source cannot be read.
-/// * [UnsupportedOperationException] on the web, which background_downloader
-///   does not support, and for HTTP methods it cannot send (only `GET`,
-///   `POST`, `HEAD`, `PUT`, `DELETE` and `PATCH` are accepted).
+/// * [UnsupportedOperationException] for HTTP methods background_downloader
+///   cannot send (only `GET`, `POST`, `HEAD`, `PUT`, `DELETE` and `PATCH`
+///   are accepted).
 ///
 /// Platform notes: uploads survive the app going to the background, not
 /// the app being killed (the upload queue lives in memory). iOS stops

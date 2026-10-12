@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:dio/dio.dart';
 import 'package:upcloud/src/core/errors.dart';
 import 'package:upcloud/src/core/http/http.dart';
@@ -33,9 +31,6 @@ final class XvsApi {
   /// file/delete...) and repeating them would duplicate the action.
   static const readOnlyPaths = {
     'account/info',
-    'account/stats',
-    'file/deleted',
-    'file/dmca',
     'file/info',
     'file/list',
     'file/url_uploads',
@@ -55,61 +50,42 @@ final class XvsApi {
   Future<Map<String, Object?>> getEnvelope(
     String path, [
     Map<String, Object?> query = const {},
-  ]) => _guard(() async {
+  ]) => guardRequest(() async {
     final response = await _dio.get<Object?>(
       path,
-      queryParameters: {'key': _apiKey(), ..._compact(query)},
+      queryParameters: {'key': _apiKey(), ...compactParams(query)},
       options: Options(
         extra: {retryableExtraKey: readOnlyPaths.contains(path)},
       ),
     );
     return checkEnvelope(response.data);
-  });
+  }, onBadResponse: _apiError);
 
   /// The multipart fields of an upload: the API key (`key`) followed by
   /// [fields] without `null` values.
   Map<String, String> uploadFields(Map<String, Object?> fields) => {
     'key': _apiKey(),
-    ..._compact(fields),
+    ...compactParams(fields),
   };
 
   /// Closes the underlying HTTP client.
   void close({bool force = false}) => _dio.close(force: force);
 
-  Future<T> _guard<T>(Future<T> Function() request) async {
-    try {
-      return await request();
-    } on UpCloudException {
-      rethrow;
-    } on DioException catch (e, st) {
-      throw _fromDioException(e, st);
-    } on FormatException catch (e, st) {
-      throw ProviderException(
-        'Invalid response: ${e.message}',
-        cause: e,
-        stackTrace: st,
-      );
-    }
-  }
-
-  /// Prefers the API error message of an error response over the generic
-  /// HTTP error.
-  static UpCloudException _fromDioException(DioException e, StackTrace st) {
-    final data = e.response?.data;
-    if (e.type == DioExceptionType.badResponse && data != null) {
-      final envelope = _tryDecode(data);
-      final message = readString(envelope?['msg']);
-      if (envelope != null && message != null) {
-        return xvsError(
-          status: readInt(envelope['status']) ?? e.response?.statusCode,
-          message: message,
-          response: envelope,
-          cause: e,
-          stackTrace: st,
-        );
-      }
-    }
-    return mapDioException(e, st);
+  /// The API error of an error response, preferred over the generic HTTP
+  /// error. `429` keeps the HTTP error, which carries `Retry-After`.
+  static UpCloudException? _apiError(DioException e, StackTrace st) {
+    final response = e.response;
+    if (response == null || response.statusCode == 429) return null;
+    final envelope = readJsonObject(response.data);
+    final message = readString(envelope?['msg']);
+    if (envelope == null || message == null) return null;
+    return xvsError(
+      status: readInt(envelope['status']) ?? response.statusCode,
+      message: message,
+      response: envelope,
+      cause: e,
+      stackTrace: st,
+    );
   }
 }
 
@@ -119,7 +95,7 @@ final class XvsApi {
 /// `text/html` content type). Throws the exception built by [xvsError] when
 /// the status is not `200`.
 Map<String, Object?> checkEnvelope(Object? data) {
-  final envelope = _tryDecode(data);
+  final envelope = readJsonObject(data);
   if (envelope == null) {
     throw ProviderException('Unexpected response from the API', response: data);
   }
@@ -142,20 +118,6 @@ void _throwIfError(Map<String, Object?> envelope, {int? fallbackStatus}) {
       response: envelope,
     );
   }
-}
-
-Map<String, Object?>? _tryDecode(Object? data) {
-  if (data is Map) return data.cast<String, Object?>();
-  if (data is String) {
-    final text = data.trim();
-    if (!text.startsWith('{')) return null;
-    try {
-      return readMap(jsonDecode(text));
-    } on FormatException {
-      return null;
-    }
-  }
-  return null;
 }
 
 /// Answer of clones that turned an endpoint off (StreamHG and EarnVids for
@@ -189,10 +151,11 @@ final _quotaPattern = RegExp(
 /// none: the server accepted the file, so uploading it again would not
 /// help.
 Map<String, Object?> checkUploadResponse(UploadResponse response) {
-  final envelope = _tryDecode(response.body);
+  final envelope = readJsonObject(response.body);
   final message = readString(envelope?['msg']);
   if (!response.isSuccessful) {
-    if (envelope == null || message == null) {
+    // `429` keeps the HTTP error, which carries `Retry-After`.
+    if (envelope == null || message == null || response.statusCode == 429) {
       throw uploadResponseException(response);
     }
     throw xvsError(
@@ -267,9 +230,3 @@ UpCloudException xvsError({
     stackTrace: stackTrace,
   );
 }
-
-/// [query] without `null` values, with values converted to strings.
-Map<String, String> _compact(Map<String, Object?> query) => {
-  for (final MapEntry(:key, :value) in query.entries)
-    if (value != null) key: '$value',
-};

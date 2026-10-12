@@ -11,7 +11,7 @@ part 'provider_config.g.dart';
 /// limits and credentials.
 ///
 /// Configs come from the provider registry (`registry/providers.json` in the
-/// repository, bundled in the package and refreshed remotely) and can be
+/// repository, bundled in the app and refreshed remotely) and can be
 /// edited or added by the user.
 ///
 /// ```json
@@ -115,12 +115,6 @@ abstract class ProviderConfig with _$ProviderConfig {
     for (final name in disabledCapabilities)
       ?Capability.values.asNameMap()[name],
   };
-
-  /// Reads a driver setting as a string.
-  String? stringSetting(String key) {
-    final value = settings[key];
-    return value is String && value.isNotEmpty ? value : null;
-  }
 }
 
 /// Limits declared in a [ProviderConfig], in a human friendly format.

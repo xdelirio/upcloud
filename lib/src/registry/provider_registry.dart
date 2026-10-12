@@ -15,7 +15,7 @@ import 'package:upcloud/src/registry/registry_document.dart';
 import 'package:upcloud/src/registry/registry_store.dart';
 
 /// Registry maintained in the upcloud repository. Apps download it to get
-/// new providers, domains and limits without updating the package.
+/// new providers, domains and limits without updating the app.
 final Uri defaultRegistryUrl = Uri.parse(
   'https://raw.githubusercontent.com/xdelirio/upcloud/main/registry/providers.json',
 );
@@ -56,16 +56,50 @@ final class RegistryRefreshResult {
       '${error == null ? '' : ', $error'})';
 }
 
+/// Why a registry entry could not be used.
+enum RegistryIssueKind {
+  /// The entry cannot be read; [RegistryIssue.detail] says why.
+  invalidEntry,
+
+  /// Another entry has the same id.
+  duplicatedId,
+
+  /// The driver named in [RegistryIssue.detail] is not available.
+  unknownDriver,
+
+  /// The driver rejects the entry; see [RegistryIssue.problems].
+  invalidConfig,
+}
+
 /// A registry entry that could not be used.
 final class RegistryIssue {
   /// Creates an issue.
-  const RegistryIssue(this.providerId, this.message);
+  const RegistryIssue(
+    this.providerId,
+    this.kind, {
+    this.detail,
+    this.problems = const [],
+  });
 
   /// Id of the entry, or `?` when it has none.
   final String providerId;
 
   /// What is wrong.
-  final String message;
+  final RegistryIssueKind kind;
+
+  /// The parse error or the driver id, depending on [kind].
+  final String? detail;
+
+  /// What the driver rejects, for [RegistryIssueKind.invalidConfig].
+  final List<ConfigProblem> problems;
+
+  /// What is wrong, in English (for logs; the UI localizes [kind]).
+  String get message => switch (kind) {
+    RegistryIssueKind.invalidEntry => 'Invalid entry: $detail',
+    RegistryIssueKind.duplicatedId => 'Duplicated id',
+    RegistryIssueKind.unknownDriver => 'Unknown driver "$detail"',
+    RegistryIssueKind.invalidConfig => problems.join('; '),
+  };
 
   @override
   String toString() => '$providerId: $message';
@@ -75,7 +109,7 @@ final class RegistryIssue {
 ///
 /// Combines three layers, later ones winning:
 ///
-/// 1. The registry bundled with the package (works offline).
+/// 1. The registry bundled with the app (works offline).
 /// 2. The latest registry downloaded from [remoteUrl], cached in [store].
 ///    The newest of 1 and 2 (by `updatedAt`) is used as the base.
 /// 3. The user's edits and custom providers, saved in [store].
@@ -173,9 +207,6 @@ final class ProviderRegistry {
   /// Entries that were skipped and why.
   List<RegistryIssue> get issues => _issues;
 
-  /// The base document in use (bundled or downloaded).
-  RegistryDocument get document => _base;
-
   /// When the remote registry was last checked, if ever.
   DateTime? get lastFetchedAt => _fetchedAt;
 
@@ -196,8 +227,18 @@ final class ProviderRegistry {
         await store.write(remoteKey, null);
       }
     }
-    _etag = await store.read(etagKey);
-    _fetchedAt = readDateTime(await store.read(fetchedAtKey));
+    if (_remote == null) {
+      // Without the document its ETag would answer "not modified" forever.
+      _etag = null;
+      _fetchedAt = null;
+      if (cached != null) {
+        await store.write(etagKey, null);
+        await store.write(fetchedAtKey, null);
+      }
+    } else {
+      _etag = await store.read(etagKey);
+      _fetchedAt = readDateTime(await store.read(fetchedAtKey));
+    }
 
     _overrides.clear();
     final saved = await store.read(overridesKey);
@@ -247,6 +288,13 @@ final class ProviderRegistry {
   /// Throws [InvalidProviderConfigException] if the driver is unknown or
   /// the config is invalid (see [validate]).
   Future<void> save(ProviderConfig config) async {
+    _setOverride(config);
+    await _saveOverrides();
+  }
+
+  /// Validates [config] and keeps its differences with the base registry
+  /// in memory; the caller saves them.
+  void _setOverride(ProviderConfig config) {
     final problems = validate(config);
     if (problems.isNotEmpty) {
       throw InvalidProviderConfigException(config.id, problems);
@@ -266,7 +314,6 @@ final class ProviderRegistry {
         _overrides[config.id] = {'id': config.id, ...patch};
       }
     }
-    await _saveOverrides();
   }
 
   /// Problems that prevent saving [config], empty when it is valid.
@@ -320,12 +367,13 @@ final class ProviderRegistry {
         final config = ProviderConfig.fromJson(
           mergeJson(_base.entry(readString(entry['id']) ?? '') ?? {}, entry),
         );
-        await save(config);
+        _setOverride(config);
         imported.add(config.id);
       } on Object {
         // Invalid entries are skipped.
       }
     }
+    if (imported.isNotEmpty) await _saveOverrides();
     return imported;
   }
 
@@ -368,13 +416,14 @@ final class ProviderRegistry {
       if (!document.isSupported) {
         throw FormatException(
           'Registry schema ${document.schemaVersion} is newer than '
-          '$supportedRegistrySchema; update the upcloud package',
+          '$supportedRegistrySchema; update the app',
         );
       }
-      _remote = document;
-      _etag = response.headers.value('etag');
+      final etag = response.headers.value('etag');
       await store.write(remoteKey, body);
-      await store.write(etagKey, _etag);
+      await store.write(etagKey, etag);
+      _remote = document;
+      _etag = etag;
       _rebuildAndNotify();
       return const RegistryRefreshResult(RegistryRefreshStatus.updated);
     } on DioException catch (e, st) {
@@ -382,7 +431,8 @@ final class ProviderRegistry {
         RegistryRefreshStatus.failed,
         error: mapDioException(e, st),
       );
-    } on FormatException catch (e) {
+    } on Object catch (e) {
+      // Invalid documents and failed writes of the store.
       return RegistryRefreshResult(RegistryRefreshStatus.failed, error: e);
     }
   }
@@ -421,25 +471,46 @@ final class ProviderRegistry {
       try {
         config = ProviderConfig.fromJson(entry);
       } on Object catch (e) {
-        issues.add(RegistryIssue(id, 'Invalid entry: $e'));
+        issues.add(
+          RegistryIssue(id, RegistryIssueKind.invalidEntry, detail: '$e'),
+        );
         continue;
       }
       if (configs.any((c) => c.id == config.id)) {
-        issues.add(RegistryIssue(id, 'Duplicated id'));
+        issues.add(RegistryIssue(id, RegistryIssueKind.duplicatedId));
         continue;
       }
       configs.add(config);
       final driver = _drivers[config.driver];
       if (driver == null) {
-        issues.add(RegistryIssue(id, 'Unknown driver "${config.driver}"'));
+        issues.add(
+          RegistryIssue(
+            id,
+            RegistryIssueKind.unknownDriver,
+            detail: config.driver,
+          ),
+        );
         continue;
       }
       final problems = driver.validate(config);
       if (problems.isNotEmpty) {
-        issues.add(RegistryIssue(id, problems.join('; ')));
+        issues.add(
+          RegistryIssue(
+            id,
+            RegistryIssueKind.invalidConfig,
+            problems: problems,
+          ),
+        );
         continue;
       }
-      if (config.enabled) definitions[id] = driver.definitionFor(config);
+      if (config.enabled) {
+        // Unchanged providers keep their definition, so their connections
+        // stay open (see `UpCloud`).
+        final previous = _definitions[id];
+        definitions[id] = previous != null && previous.config == config
+            ? previous
+            : driver.definitionFor(config);
+      }
     }
     _configs = List.unmodifiable(configs);
     _definitions = Map.unmodifiable(definitions);

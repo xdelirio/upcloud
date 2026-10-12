@@ -118,7 +118,7 @@ class UploadComposerController extends ChangeNotifier {
     _folderEdited = true;
     if (value == _folderPath) return;
     _folderPath = value;
-    _notify();
+    _notify(limitsChanged: false);
   }
 
   /// Visibility of the uploaded files.
@@ -128,7 +128,7 @@ class UploadComposerController extends ChangeNotifier {
     _visibilityEdited = true;
     if (value == _visibility) return;
     _visibility = value;
-    _notify();
+    _notify(limitsChanged: false);
   }
 
   /// Uploads that break the limits of a provider (file too large, file
@@ -311,9 +311,11 @@ class UploadComposerController extends ChangeNotifier {
     _notify();
   }
 
-  void _notify() {
+  /// Notifies listeners. [skipped] is computed again unless the change
+  /// cannot affect it ([limitsChanged] is false).
+  void _notify({bool limitsChanged = true}) {
     if (_disposed) return;
-    _skipped = null;
+    if (limitsChanged) _skipped = null;
     notifyListeners();
   }
 }

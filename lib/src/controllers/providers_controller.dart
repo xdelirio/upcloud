@@ -31,6 +31,9 @@ class ProvidersController extends ChangeNotifier {
   ProvidersState _state;
   var _disposed = false;
 
+  /// Operations in progress: they may overlap.
+  var _saving = 0;
+
   /// Current state.
   ProvidersState get state => _state;
 
@@ -63,15 +66,13 @@ class ProvidersController extends ChangeNotifier {
   /// [force] ignores `ProviderRegistry.minRefreshInterval`.
   Future<RegistryRefreshResult> refresh({bool force = true}) async {
     _emit(_state.copyWith(isRefreshing: true, error: null));
-    final result = await registry.refresh(force: force);
-    _sync();
-    _emit(
-      _state.copyWith(
-        isRefreshing: false,
-        lastRefresh: result,
-        lastFetchedAt: registry.lastFetchedAt,
-      ),
-    );
+    RegistryRefreshResult result;
+    try {
+      result = await registry.refresh(force: force);
+    } on Object catch (e) {
+      result = RegistryRefreshResult(RegistryRefreshStatus.failed, error: e);
+    }
+    _sync(_state.copyWith(isRefreshing: false, lastRefresh: result));
     return result;
   }
 
@@ -88,37 +89,27 @@ class ProvidersController extends ChangeNotifier {
   /// Discards the user's edits to [id]; custom providers are removed.
   Future<void> reset(String id) => _run(() => registry.reset(id));
 
-  /// The user's edits and custom providers, e.g. for a backup.
-  RegistryDocument exportUserChanges() => registry.exportUserChanges();
-
-  /// Imports the providers of [document] as user changes.
-  ///
-  /// Returns the imported ids.
-  Future<List<String>> importProviders(RegistryDocument document) =>
-      _run(() => registry.importProviders(document));
-
-  /// Clears [ProvidersState.error].
-  void clearError() {
-    if (_state.error != null) _emit(_state.copyWith(error: null));
-  }
-
   Future<T> _run<T>(Future<T> Function() action) async {
+    _saving++;
     _emit(_state.copyWith(isSaving: true, error: null));
     try {
       final result = await action();
-      _sync();
-      _emit(_state.copyWith(isSaving: false));
+      _saving--;
+      _sync(_state.copyWith(isSaving: _saving > 0));
       return result;
     } on Object catch (e) {
-      _emit(_state.copyWith(isSaving: false, error: e));
+      _saving--;
+      _emit(_state.copyWith(isSaving: _saving > 0, error: e));
       rethrow;
     }
   }
 
-  void _sync() {
+  /// Publishes [base] (the current state by default) with the data of the
+  /// registry.
+  void _sync([ProvidersState? base]) {
     final configs = registry.configs;
     _emit(
-      _state.copyWith(
+      (base ?? _state).copyWith(
         configs: configs,
         issues: registry.issues,
         customIds: {

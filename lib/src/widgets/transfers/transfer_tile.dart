@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:upcloud/src/l10n/upcloud_localizations.dart';
 import 'package:upcloud/src/theme/upcloud_theme.dart';
 import 'package:upcloud/src/utils/file_kind.dart';
+import 'package:upcloud/src/widgets/common/tinted_icon_box.dart';
 import 'package:upcloud/upcloud.dart';
 
 /// Displays one upload: name, progress bar, status or error,
@@ -195,7 +196,7 @@ class TransferTile extends StatelessWidget {
         )
       else
         l10n.formatBytes(progress.transferred),
-      if (fraction != null) '${(fraction * 100).floor()} %',
+      if (fraction != null) l10n.formatPercent(fraction),
       if (showSpeed && speed != null && speed > 0) l10n.formatSpeed(speed),
     ].join(' · ');
   }
@@ -225,15 +226,7 @@ class _TransferIcon extends StatelessWidget {
       dimension: size + 6,
       child: Stack(
         children: [
-          Container(
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(size / 4),
-            ),
-            child: Icon(kind.icon, color: color, size: size * 0.6),
-          ),
+          TintedIconBox(icon: kind.icon, color: color, size: size),
           Positioned(
             right: 0,
             bottom: 0,

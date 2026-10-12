@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:upcloud/src/app/file_io.dart';
 import 'package:upcloud/src/app/glass_chrome.dart';
 import 'package:upcloud/src/app/page_scaffold.dart';
-import 'package:upcloud/src/app/strings.dart';
 import 'package:upcloud/ui.dart';
 
 /// Uploads several files to several accounts at once with
@@ -33,10 +32,9 @@ class _UploadPageState extends State<UploadPage> {
 
   @override
   Widget build(BuildContext context) {
-    final strings = ExampleStrings.of(context);
     final l10n = UpCloudLocalizations.of(context);
     return PageScaffold(
-      title: Text(strings.upload),
+      title: Text(l10n.upload),
       body: UploadComposer(
         controller: _composer,
         onPickFiles: pickUploadSources,
@@ -54,7 +52,7 @@ class _UploadPageState extends State<UploadPage> {
           icon: Icons.cloud_upload_rounded,
           label: _composer.canSubmit
               ? l10n.startUploads(_composer.uploadCount)
-              : strings.upload,
+              : l10n.upload,
           onPressed: _composer.canSubmit
               ? () => submitComposer(_composer, onSubmitted: widget.onSubmitted)
               : null,

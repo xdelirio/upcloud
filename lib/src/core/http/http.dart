@@ -64,17 +64,54 @@ String _withSlash(Uri uri) {
 }
 
 /// Runs [request] and converts Dio errors into [UpCloudException]s.
-Future<T> guardRequest<T>(Future<T> Function() request) async {
+///
+/// [onBadResponse] is called for responses with an HTTP error status, so
+/// drivers can prefer the API error of the body: the exception it returns
+/// is thrown (it may also throw one itself), and `null` falls back to
+/// [mapDioException].
+Future<T> guardRequest<T>(
+  Future<T> Function() request, {
+  UpCloudException? Function(DioException e, StackTrace st)? onBadResponse,
+}) async {
   try {
     return await request();
   } on UpCloudException {
     rethrow;
   } on DioException catch (e, st) {
+    if (e.type == DioExceptionType.badResponse) {
+      final mapped = onBadResponse?.call(e, st);
+      if (mapped != null) throw mapped;
+    }
     throw mapDioException(e, st);
   }
 }
 
+/// Awaits two independent requests sent at the same time.
+///
+/// Throws the error of [first], else the one of [second], as it was thrown
+/// (not wrapped in a [ParallelWaitError]).
+Future<(A, B)> waitBoth<A, B>(Future<A> first, Future<B> second) async {
+  try {
+    return await (first, second).wait;
+    // The only way to get the errors of a record `wait`.
+    // ignore: avoid_catching_errors
+  } on ParallelWaitError<(A?, B?), (AsyncError?, AsyncError?)> catch (e) {
+    final error = e.errors.$1 ?? e.errors.$2!;
+    Error.throwWithStackTrace(error.error, error.stackTrace);
+  }
+}
+
+/// [params] without `null` values, with the others converted to strings
+/// (query parameters and form fields).
+Map<String, String> compactParams(Map<String, Object?> params) => {
+  for (final MapEntry(:key, :value) in params.entries)
+    if (value != null) key: '$value',
+};
+
 /// Converts a [DioException] into the matching [UpCloudException].
+///
+/// The messages never include the request URL (it may carry credentials)
+/// nor the developer oriented texts of Dio.
 UpCloudException mapDioException(DioException e, [StackTrace? stackTrace]) {
   final st = stackTrace ?? e.stackTrace;
   final inner = e.error;
@@ -94,17 +131,28 @@ UpCloudException mapDioException(DioException e, [StackTrace? stackTrace]) {
         stackTrace: st,
       );
     case DioExceptionType.badResponse:
-    case DioExceptionType.unknown:
       final response = e.response;
       final status = response?.statusCode;
       return httpStatusException(
         status,
-        e.message ?? 'HTTP $status',
+        'HTTP $status',
         retryAfter: parseRetryAfter(response?.headers.value('retry-after')),
         response: response?.data,
         cause: e,
         stackTrace: st,
       );
+    case DioExceptionType.unknown:
+      // A body that is not the JSON its content type announces.
+      if (inner is FormatException) {
+        return ProviderException(
+          'Invalid response',
+          statusCode: e.response?.statusCode,
+          response: e.response?.data,
+          cause: e,
+          stackTrace: st,
+        );
+      }
+      return NetworkException('Network error', cause: e, stackTrace: st);
   }
 }
 

@@ -1,4 +1,4 @@
-package dev.upcloud.example
+package dev.upcloud.app
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:upcloud/src/app/add_account_page.dart';
 import 'package:upcloud/src/app/glass_chrome.dart';
 import 'package:upcloud/src/app/page_scaffold.dart';
-import 'package:upcloud/src/app/strings.dart';
 import 'package:upcloud/ui.dart';
 
 /// Saved accounts, with their status and storage.
@@ -34,12 +33,12 @@ class AccountsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final strings = ExampleStrings.of(context);
+    final l10n = UpCloudLocalizations.of(context);
     return PageScaffold(
-      title: Text(strings.accounts),
+      title: Text(l10n.accounts),
       primaryAction: GlassActionButton(
         icon: Icons.add_rounded,
-        label: strings.addAccount,
+        label: l10n.addAccount,
         onPressed: () => unawaited(_add(context)),
       ),
       body: AccountList(

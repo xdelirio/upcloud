@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:json_annotation/json_annotation.dart';
 
 // Lenient readers for APIs that mix types ("1" vs 1, "" vs null, ...).
@@ -91,6 +93,36 @@ List<Object?> readList(Object? value) =>
 /// Reads a JSON object, returning `null` for anything else.
 Map<String, Object?>? readMap(Object? value) =>
     value is Map ? value.cast<String, Object?>() : null;
+
+/// Reads a JSON object already decoded or sent as text (some APIs answer
+/// JSON with a `text/html` or `text/xml` content type), returning `null`
+/// for anything else.
+Map<String, Object?>? readJsonObject(Object? data) {
+  if (data is! String) return readMap(data);
+  final text = data.trim();
+  if (!text.startsWith('{')) return null;
+  try {
+    return readMap(jsonDecode(text));
+  } on FormatException {
+    return null;
+  }
+}
+
+/// Reads a percentage (`55`, `"55"`, `"55%"`) as a fraction between 0 and 1.
+double? readPercent(Object? value) {
+  final percent = readDouble(
+    value is String ? value.replaceAll('%', '') : value,
+  );
+  return percent == null ? null : (percent / 100).clamp(0, 1).toDouble();
+}
+
+/// The entries of [json] whose key is not in [known], without `null`
+/// values: what a mapper keeps in the `extra` of a model.
+Map<String, Object?> readExtra(Map<String, Object?> json, Set<String> known) =>
+    {
+      for (final MapEntry(:key, :value) in json.entries)
+        if (value != null && !known.contains(key)) key: value,
+    };
 
 /// json_serializable converter using [readInt].
 final class LenientIntConverter implements JsonConverter<int?, Object?> {

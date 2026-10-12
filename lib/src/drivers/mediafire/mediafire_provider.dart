@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:dio/dio.dart';
+import 'package:upcloud/src/core/cancellation.dart';
 import 'package:upcloud/src/core/capabilities/capabilities.dart';
 import 'package:upcloud/src/core/credentials.dart';
 import 'package:upcloud/src/core/errors.dart';
@@ -46,11 +47,6 @@ abstract final class MediaFireCredentials {
 
   /// Key of the (optional) application secret key.
   static const String apiKey = CredentialField.apiKeyId;
-
-  /// Where to create an application and get its id and key.
-  static final Uri helpUrl = Uri.parse(
-    'https://www.mediafire.com/developers/getting_started/',
-  );
 
   /// Fields of the MediaFire login form: email and password.
   static const CredentialSchema schema = CredentialSchema([
@@ -107,8 +103,8 @@ final class MediaFireProvider
   /// Creates a provider for the account in [credentials] (see
   /// [MediaFireCredentials]).
   ///
-  /// [info], [limits] and [baseUrl] default to the values of
-  /// [mediaFireFallbackDefinition]. Files whose link the API does not
+  /// [info], [limits], [capabilities] and [baseUrl] default to the values
+  /// of [mediaFireFallbackDefinition]. Files whose link the API does not
   /// return get one built from [fileUrlTemplate] (`{id}` is the quickkey),
   /// [mediaFireFileUrlTemplate] by default.
   /// Uploaded files are polled every [pollInterval] for up to
@@ -121,6 +117,7 @@ final class MediaFireProvider
     ProviderOptions options = const ProviderOptions(),
     ProviderInfo? info,
     ProviderLimits? limits,
+    Set<Capability>? capabilities,
     Uri? baseUrl,
     String? fileUrlTemplate,
     Duration pollInterval = const Duration(seconds: 2),
@@ -160,6 +157,7 @@ final class MediaFireProvider
     return MediaFireProvider._(
       info: info ?? mediaFireFallbackDefinition.info,
       limits: resolvedLimits,
+      capabilities: capabilities ?? mediaFireFallbackDefinition.capabilities,
       fileUrlTemplate: switch (fileUrlTemplate?.trim()) {
         final template? when template.isNotEmpty => template,
         _ => mediaFireFileUrlTemplate,
@@ -178,6 +176,7 @@ final class MediaFireProvider
   MediaFireProvider._({
     required this.info,
     required this.limits,
+    required this.capabilities,
     required this._fileUrlTemplate,
     required this._dio,
     required this._ownsDio,
@@ -200,8 +199,10 @@ final class MediaFireProvider
   @override
   final ProviderLimits limits;
 
+  /// The operations of the MediaFire API that the registry entry did not
+  /// disable.
   @override
-  Set<Capability> get capabilities => mediaFireCapabilities;
+  final Set<Capability> capabilities;
 
   /// Link of the files whose link the API does not return, `{id}` is the
   /// quickkey.
@@ -236,6 +237,9 @@ final class MediaFireProvider
   }) async {
     final key = mediaFireFolderKey(folderId);
     final perPage = math.max(1, page.perPage);
+    // A listing starts at its first page: later pages reuse its chunks.
+    if (page.page <= 1 || key != _chunksFolder) _chunks.clear();
+    _chunksFolder = key;
     final start = math.max(0, page.page - 1) * perPage;
     final end = start + perPage;
     final items = <CloudEntry>[];
@@ -309,7 +313,25 @@ final class MediaFireProvider
     );
   }
 
+  /// Chunks of the folder being listed, by content type and number: a
+  /// page is smaller than a chunk and every page walks the folder chunks,
+  /// so pages of one listing would download the same chunks again.
+  final _chunks = <(String, int), MediaFireFolderContentDto>{};
+  String? _chunksFolder;
+
   Future<MediaFireFolderContentDto> _content(
+    String folderKey,
+    String contentType,
+    int chunk,
+  ) async {
+    final cached = _chunks[(contentType, chunk)];
+    if (cached != null && folderKey == _chunksFolder) return cached;
+    final content = await _fetchContent(folderKey, contentType, chunk);
+    if (folderKey == _chunksFolder) _chunks[(contentType, chunk)] = content;
+    return content;
+  }
+
+  Future<MediaFireFolderContentDto> _fetchContent(
     String folderKey,
     String contentType,
     int chunk,
@@ -477,16 +499,10 @@ final class MediaFireProvider
     UploadOptions options = const UploadOptions(),
   }) async {
     final length = file.size;
-    final rejection = limits.check(
+    limits.ensureAccepts(
       extension: file.extension,
       size: length == null ? null : DataSize(length),
     );
-    if (rejection != null) {
-      throw UploadRejectedException(
-        'MediaFire does not accept this file',
-        reason: rejection,
-      );
-    }
     return await _uploader.prepare(
       file,
       folderKey: mediaFireFolderKey(options.folderId),
@@ -505,9 +521,14 @@ final class MediaFireProvider
   @override
   Future<CloudFile> completeUpload(
     UploadRequest request,
-    UploadResponse response,
-  ) async {
-    final upload = await _uploader.complete(request, response);
+    UploadResponse response, {
+    CancellationToken? cancelToken,
+  }) async {
+    final upload = await _uploader.complete(
+      request,
+      response,
+      cancelToken: cancelToken,
+    );
     final quickkey = upload.quickkey!;
     final context = request.context;
     final description = context[_descriptionKey];
@@ -517,16 +538,19 @@ final class MediaFireProvider
       _ => null,
     };
     if (description != null || isPublic != null) {
-      // Setting the same values again is harmless: safe to retry.
-      await _api.request(
-        'file/update',
-        params: {
-          'quick_key': quickkey,
-          'description': ?description,
-          if (isPublic != null) 'privacy': isPublic ? 'public' : 'private',
-        },
-        retryable: true,
-      );
+      try {
+        await _api.request(
+          'file/update',
+          params: {
+            'quick_key': quickkey,
+            'description': ?description,
+            if (isPublic != null) 'privacy': isPublic ? 'public' : 'private',
+          },
+        );
+      } on UpCloudException {
+        // The file exists: do not fail (and upload it again) for its
+        // description or visibility.
+      }
     }
     try {
       return await fileInfo(FileId(quickkey));

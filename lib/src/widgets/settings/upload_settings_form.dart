@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:upcloud/src/l10n/upcloud_localizations.dart';
 import 'package:upcloud/src/scope/upcloud_scope.dart';
 import 'package:upcloud/src/widgets/common/folder_path_field.dart';
+import 'package:upcloud/src/widgets/common/labeled_row.dart';
 import 'package:upcloud/src/widgets/common/section.dart';
 import 'package:upcloud/upcloud.dart';
 
@@ -12,8 +13,8 @@ import 'package:upcloud/upcloud.dart';
 /// uploads, default folder and default visibility.
 ///
 /// Reads `upcloud.settings`, saves every change with
-/// `UpCloud.updateSettings` (typing in the folder field is debounced by
-/// [textDebounce]) and follows `UpCloud.settingsChanges`.
+/// `UpCloud.updateSettings` (typing in the folder field is debounced) and
+/// follows `UpCloud.settingsChanges`.
 ///
 /// It is a column of sections that sizes itself to its content: put it in
 /// a scroll view.
@@ -26,36 +27,27 @@ import 'package:upcloud/upcloud.dart';
 /// ```
 class UploadSettingsForm extends StatefulWidget {
   /// Creates the form for [upcloud], or the instance of the [UpCloudScope].
-  const UploadSettingsForm({
-    this.upcloud,
-    this.autoClearChoices = defaultAutoClearChoices,
-    this.textDebounce = const Duration(milliseconds: 600),
-    this.spacing = 24,
-    super.key,
-  });
-
-  /// Choices of [UploadSettings.autoClearAfterSeconds]: `null` (never), `0`
-  /// (immediately), 30 s, 5 min and 30 min.
-  static const defaultAutoClearChoices = <int?>[null, 0, 30, 300, 1800];
+  const UploadSettingsForm({this.upcloud, super.key});
 
   /// Instance to edit. Defaults to `UpCloudScope.of(context)`.
   final UpCloud? upcloud;
-
-  /// Values offered for [UploadSettings.autoClearAfterSeconds], in seconds;
-  /// `null` keeps completed uploads. The current value is always offered.
-  final List<int?> autoClearChoices;
-
-  /// Delay after the last keystroke before the default folder is saved.
-  final Duration textDebounce;
-
-  /// Space between sections.
-  final double spacing;
 
   @override
   State<UploadSettingsForm> createState() => _UploadSettingsFormState();
 }
 
 class _UploadSettingsFormState extends State<UploadSettingsForm> {
+  /// Choices of [UploadSettings.autoClearAfterSeconds]: `null` (never), `0`
+  /// (immediately), 30 s, 5 min and 30 min. The current value is always
+  /// offered too.
+  static const _autoClearChoices = <int?>[null, 0, 30, 300, 1800];
+
+  /// Delay after the last keystroke before the default folder is saved.
+  static const _textDebounce = Duration(milliseconds: 600);
+
+  /// Space between sections.
+  static const _spacing = 24.0;
+
   final _folder = TextEditingController();
   final _folderFocus = FocusNode();
   UpCloud? _upcloud;
@@ -124,7 +116,7 @@ class _UploadSettingsFormState extends State<UploadSettingsForm> {
 
   void _onFolderChanged(String _) {
     _debounce?.cancel();
-    _debounce = Timer(widget.textDebounce, _flushFolder);
+    _debounce = Timer(_textDebounce, _flushFolder);
   }
 
   void _flushFolder({bool rebuild = true}) {
@@ -155,8 +147,8 @@ class _UploadSettingsFormState extends State<UploadSettingsForm> {
     final l10n = UpCloudLocalizations.of(context);
     final settings = _settings;
     final autoClear = [
-      ...widget.autoClearChoices,
-      if (!widget.autoClearChoices.contains(settings.autoClearAfterSeconds))
+      ..._autoClearChoices,
+      if (!_autoClearChoices.contains(settings.autoClearAfterSeconds))
         settings.autoClearAfterSeconds,
     ];
     String autoClearLabel(int? seconds) => switch (seconds) {
@@ -202,11 +194,11 @@ class _UploadSettingsFormState extends State<UploadSettingsForm> {
             ),
           ],
         ),
-        SizedBox(height: widget.spacing),
+        const SizedBox(height: _spacing),
         UpCloudSection(
           title: l10n.finishedUploadsSection,
           children: [
-            _LabeledRow(
+            LabeledRow(
               title: l10n.autoClear,
               subtitle: l10n.autoClearHelper,
               child: Wrap(
@@ -227,7 +219,7 @@ class _UploadSettingsFormState extends State<UploadSettingsForm> {
             ),
           ],
         ),
-        SizedBox(height: widget.spacing),
+        const SizedBox(height: _spacing),
         UpCloudSection(
           title: l10n.uploadDefaultsSection,
           children: [
@@ -244,7 +236,7 @@ class _UploadSettingsFormState extends State<UploadSettingsForm> {
                 onSubmitted: (_) => _flushFolder(),
               ),
             ),
-            _LabeledRow(
+            LabeledRow(
               title: l10n.visibilityLabel,
               child: VisibilitySelector(
                 key: const ValueKey('upcloud-settings-visibility'),
@@ -266,15 +258,11 @@ class VisibilitySelector extends StatelessWidget {
   const VisibilitySelector({
     required this.value,
     required this.onChanged,
-    this.choices = UploadVisibility.values,
     super.key,
   });
 
   /// Selected visibility.
   final UploadVisibility value;
-
-  /// Visibilities offered, in order.
-  final List<UploadVisibility> choices;
 
   /// Called with the new visibility.
   final ValueChanged<UploadVisibility>? onChanged;
@@ -287,7 +275,7 @@ class VisibilitySelector extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: [
-        for (final visibility in choices)
+        for (final visibility in UploadVisibility.values)
           ChoiceChip(
             key: ValueKey('upcloud-visibility-${visibility.name}'),
             showCheckmark: false,
@@ -301,40 +289,6 @@ class VisibilitySelector extends StatelessWidget {
             onSelected: onChanged == null ? null : (_) => onChanged(visibility),
           ),
       ],
-    );
-  }
-}
-
-/// A title, optional helper text and a control below them.
-class _LabeledRow extends StatelessWidget {
-  const _LabeledRow({required this.title, required this.child, this.subtitle});
-
-  final String title;
-  final String? subtitle;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final subtitle = this.subtitle;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(title, style: theme.textTheme.bodyLarge),
-          if (subtitle != null)
-            Text(
-              subtitle,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          const SizedBox(height: 12),
-          child,
-        ],
-      ),
     );
   }
 }

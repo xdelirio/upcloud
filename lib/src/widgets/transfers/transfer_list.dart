@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:upcloud/src/controllers/transfers_controller.dart';
 import 'package:upcloud/src/controllers/transfers_state.dart';
@@ -5,22 +7,17 @@ import 'package:upcloud/src/l10n/upcloud_localizations.dart';
 import 'package:upcloud/src/scope/upcloud_scope.dart';
 import 'package:upcloud/src/theme/upcloud_theme.dart';
 import 'package:upcloud/src/widgets/common/message_view.dart';
+import 'package:upcloud/src/widgets/common/tinted_icon_box.dart';
 import 'package:upcloud/src/widgets/transfers/transfer_tile.dart';
 import 'package:upcloud/upcloud.dart';
 
-/// Builds a custom row of a [TransferList].
-typedef TransferEntryWidgetBuilder = Widget Function(
-  BuildContext context,
-  TransferEntry entry,
-  TransfersController controller,
-);
-
-/// A scrollable list of uploads with live progress.
+/// A scrollable list of uploads with live progress, newest first.
 ///
 /// Uploads of the same batch (`UpCloud.uploadBatch`) are grouped under a
 /// [TransferBatchHeader] with the overall progress and batch actions
 /// (cancel, retry failed, clear); set [groupBatches] to false to list them
-/// one by one. Other uploads are listed as [TransferTile]s.
+/// one by one. Other uploads are listed as [TransferTile]s, with the
+/// account label as secondary text.
 ///
 /// Uses [controller], or creates one for the transfers of the
 /// [UpCloudScope] above.
@@ -28,12 +25,7 @@ class TransferList extends StatefulWidget {
   /// Creates a transfer list.
   const TransferList({
     this.controller,
-    this.newestFirst = true,
-    this.showSpeed = true,
     this.groupBatches = true,
-    this.subtitleBuilder,
-    this.itemBuilder,
-    this.emptyBuilder,
     this.padding,
     super.key,
   });
@@ -41,24 +33,8 @@ class TransferList extends StatefulWidget {
   /// Controller to use. When `null`, one is created from [UpCloudScope].
   final TransfersController? controller;
 
-  /// Whether to show the latest transfers (and batches) at the top.
-  final bool newestFirst;
-
-  /// Whether tiles show the transfer speed.
-  final bool showSpeed;
-
   /// Whether uploads of the same batch are grouped under a header.
   final bool groupBatches;
-
-  /// Secondary text of each tile. Defaults to the account label when an
-  /// [UpCloudScope] is available.
-  final String? Function(UploadTask task)? subtitleBuilder;
-
-  /// Replaces the default [TransferTile].
-  final TransferEntryWidgetBuilder? itemBuilder;
-
-  /// Replaces the empty view.
-  final WidgetBuilder? emptyBuilder;
 
   /// Padding of the list.
   final EdgeInsetsGeometry? padding;
@@ -67,7 +43,8 @@ class TransferList extends StatefulWidget {
   State<TransferList> createState() => _TransferListState();
 }
 
-/// A row of a [TransferList]: one upload or one batch.
+/// A row of a [TransferList]: one upload, the header of a batch or one
+/// upload of an expanded batch.
 sealed class _Row {
   const _Row();
 }
@@ -79,9 +56,22 @@ final class _TaskRow extends _Row {
 }
 
 final class _BatchRow extends _Row {
-  const _BatchRow(this.batch);
+  const _BatchRow(this.batch, {required this.expanded});
 
   final TransferBatchEntry batch;
+  final bool expanded;
+
+  /// Whether the card of the batch ends with this row.
+  bool get isLast => !expanded || batch.entries.isEmpty;
+}
+
+final class _BatchTaskRow extends _Row {
+  const _BatchTaskRow(this.entry, {required this.isLast});
+
+  final TransferEntry entry;
+
+  /// Whether the card of the batch ends with this row.
+  final bool isLast;
 }
 
 class _TransferListState extends State<TransferList> {
@@ -127,65 +117,78 @@ class _TransferListState extends State<TransferList> {
     super.dispose();
   }
 
+  /// Rows of the list, newest first.
   List<_Row> _rows(TransfersState state) {
     final entries = state.entries;
     if (!widget.groupBatches) {
-      final rows = [for (final e in entries) _TaskRow(e)];
-      return widget.newestFirst ? rows.reversed.toList() : rows;
+      return [for (final e in entries.reversed) _TaskRow(e)];
     }
     final batches = {for (final b in state.batches) b.id: b};
     final seen = <String>{};
-    final rows = <_Row>[];
-    // A batch takes the place of its oldest upload.
+    // Uploads and batches, oldest first: a batch takes the place of its
+    // oldest upload.
+    final items = <Object>[];
     for (final entry in entries) {
       final batchId = entry.batchId;
       if (batchId == null) {
-        rows.add(_TaskRow(entry));
+        items.add(entry);
       } else if (seen.add(batchId)) {
-        rows.add(_BatchRow(batches[batchId]!));
+        items.add(batches[batchId]!);
       }
     }
-    return widget.newestFirst ? rows.reversed.toList() : rows;
+    final rows = <_Row>[];
+    for (final item in items.reversed) {
+      switch (item) {
+        case TransferEntry():
+          rows.add(_TaskRow(item));
+        case TransferBatchEntry():
+          // The uploads of a batch are rows of the list (oldest first), so
+          // that they are built lazily like the others.
+          final expanded = !_collapsed.contains(item.id);
+          rows.add(_BatchRow(item, expanded: expanded));
+          if (!expanded) continue;
+          final last = item.entries.length - 1;
+          for (final (index, entry) in item.entries.indexed) {
+            rows.add(_BatchTaskRow(entry, isLast: index == last));
+          }
+      }
+    }
+    return rows;
   }
 
-  Widget _tile(
-    BuildContext context,
-    TransferEntry entry,
-    String? Function(UploadTask task) subtitleBuilder,
-  ) {
-    final custom = widget.itemBuilder;
-    if (custom != null) return custom(context, entry, _controller);
-    return TransferTile(
-      key: ValueKey(entry.id),
-      task: entry.task,
-      state: entry.state,
-      attempt: entry.attempt,
-      maxRetries: _controller.maxRetries,
-      bytesPerSecond: entry.bytesPerSecond,
-      showSpeed: widget.showSpeed,
-      subtitle: subtitleBuilder(entry.task),
-      onCancel: () => _controller.cancel(entry.task),
-      onRetry: () => _controller.retry(entry.task),
-      onRemove: () => _controller.remove(entry.task),
-    );
-  }
+  Widget _tile(TransferEntry entry, UpCloud? upcloud) => TransferTile(
+    key: ValueKey(entry.id),
+    task: entry.task,
+    state: entry.state,
+    attempt: entry.attempt,
+    maxRetries: _controller.maxRetries,
+    bytesPerSecond: entry.bytesPerSecond,
+    subtitle: upcloud?.account(entry.task.accountId)?.label,
+    onCancel: () => _controller.cancel(entry.task),
+    onRetry: () => _controller.retry(entry.task),
+    onRemove: () => _controller.remove(entry.task),
+  );
+
+  void _setExpanded(String batchId, {required bool expanded}) => setState(() {
+    if (expanded) {
+      _collapsed.remove(batchId);
+    } else {
+      _collapsed.add(batchId);
+    }
+  });
 
   @override
   Widget build(BuildContext context) {
     final upcloud = UpCloudScope.maybeOf(context);
-    final subtitleBuilder =
-        widget.subtitleBuilder ??
-        (UploadTask task) => upcloud?.account(task.accountId)?.label;
     return ListenableBuilder(
       listenable: _controller,
       builder: (context, _) {
         final state = _controller.state;
         if (state.entries.isEmpty) {
-          return widget.emptyBuilder?.call(context) ??
-              MessageView(
-                icon: Icons.swap_vert_rounded,
-                title: UpCloudLocalizations.of(context).noTransfers,
-              );
+          return MessageView(
+            icon: Icons.swap_vert_rounded,
+            title: UpCloudLocalizations.of(context).noTransfers,
+          );
         }
         final rows = _rows(state);
         return ListView.separated(
@@ -196,21 +199,34 @@ class _TransferListState extends State<TransferList> {
               ? const Divider(height: 1)
               : const SizedBox.shrink(),
           itemBuilder: (context, index) => switch (rows[index]) {
-            _TaskRow(:final entry) => _tile(context, entry, subtitleBuilder),
-            _BatchRow(:final batch) => _BatchGroup(
-              key: ValueKey('batch-${batch.id}'),
-              batch: batch,
-              controller: _controller,
-              expanded: !_collapsed.contains(batch.id),
-              onExpandedChanged: (expanded) => setState(() {
-                if (expanded) {
-                  _collapsed.remove(batch.id);
-                } else {
-                  _collapsed.add(batch.id);
-                }
-              }),
-              tileBuilder: (context, entry) =>
-                  _tile(context, entry, subtitleBuilder),
+            _TaskRow(:final entry) => _tile(entry, upcloud),
+            _BatchRow(:final batch, :final expanded, :final isLast) =>
+              _BatchCardSlice(
+                key: ValueKey('batch-${batch.id}'),
+                isFirst: true,
+                isLast: isLast,
+                child: TransferBatchHeader(
+                  batch: batch,
+                  expanded: expanded,
+                  onExpandedChanged: (expanded) =>
+                      _setExpanded(batch.id, expanded: expanded),
+                  onCancel: () => _controller.cancelBatch(batch.id),
+                  onRetryFailed: () => _controller.retryFailed(batch.id),
+                  onClear: () => _controller.clearBatch(batch.id),
+                ),
+              ),
+            _BatchTaskRow(:final entry, :final isLast) => _BatchCardSlice(
+              key: ValueKey('batch-task-${entry.id}'),
+              isFirst: false,
+              isLast: isLast,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+                  _tile(entry, upcloud),
+                ],
+              ),
             ),
           },
         );
@@ -219,58 +235,100 @@ class _TransferListState extends State<TransferList> {
   }
 }
 
-class _BatchGroup extends StatelessWidget {
-  const _BatchGroup({
-    required this.batch,
-    required this.controller,
-    required this.expanded,
-    required this.onExpandedChanged,
-    required this.tileBuilder,
+/// One row of the card of a batch: the header ([isFirst]) or one of its
+/// uploads. Consecutive slices draw a single card, like the cards of the
+/// app (e.g. `UpCloudSection`), while the list builds them one by one.
+class _BatchCardSlice extends StatelessWidget {
+  const _BatchCardSlice({
+    required this.isFirst,
+    required this.isLast,
+    required this.child,
     super.key,
   });
 
-  final TransferBatchEntry batch;
-  final TransfersController controller;
-  final bool expanded;
-  final ValueChanged<bool> onExpandedChanged;
-  final Widget Function(BuildContext context, TransferEntry entry) tileBuilder;
+  final bool isFirst;
+  final bool isLast;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final radius = UpCloudTheme.of(context).borderRadius;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      child: Material(
-        // Like the cards of the app, e.g. `UpCloudSection`.
-        color: theme.cardTheme.color ?? scheme.surfaceContainerLow,
-        shape: RoundedRectangleBorder(
-          borderRadius: radius,
-          side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+      padding: EdgeInsets.fromLTRB(8, isFirst ? 6 : 0, 8, isLast ? 6 : 0),
+      child: CustomPaint(
+        painter: _BatchCardPainter(
+          color: theme.cardTheme.color ?? scheme.surfaceContainerLow,
+          borderColor: scheme.outlineVariant.withValues(alpha: 0.5),
+          radius: UpCloudTheme.of(context).borderRadius,
+          isFirst: isFirst,
+          isLast: isLast,
         ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TransferBatchHeader(
-              batch: batch,
-              expanded: expanded,
-              onExpandedChanged: onExpandedChanged,
-              onCancel: () => controller.cancelBatch(batch.id),
-              onRetryFailed: () => controller.retryFailed(batch.id),
-              onClear: () => controller.clearBatch(batch.id),
-            ),
-            if (expanded)
-              for (final entry in batch.entries) ...[
-                const Divider(height: 1, indent: 16, endIndent: 16),
-                tileBuilder(context, entry),
-              ],
-          ],
-        ),
+        // Ink of the buttons of the row.
+        child: Material(type: MaterialType.transparency, child: child),
       ),
     );
   }
+}
+
+/// Paints the part of a bordered card that a row covers: the top edge
+/// only on the first row and the bottom edge only on the last one.
+class _BatchCardPainter extends CustomPainter {
+  const _BatchCardPainter({
+    required this.color,
+    required this.borderColor,
+    required this.radius,
+    required this.isFirst,
+    required this.isLast,
+  });
+
+  final Color color;
+  final Color borderColor;
+  final BorderRadius radius;
+  final bool isFirst;
+  final bool isLast;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final shape = RoundedRectangleBorder(
+      borderRadius: radius,
+      side: BorderSide(color: borderColor),
+    );
+    // The card continues past the edges shared with other rows, far enough
+    // to keep its corners and border out of this row.
+    final overflow =
+        [
+          radius.topLeft.y,
+          radius.topRight.y,
+          radius.bottomLeft.y,
+          radius.bottomRight.y,
+        ].reduce(math.max) +
+        shape.side.width;
+    final card = Rect.fromLTRB(
+      0,
+      isFirst ? 0 : -overflow,
+      size.width,
+      isLast ? size.height : size.height + overflow,
+    );
+    final outline = shape.getOuterPath(card);
+    canvas
+      ..save()
+      // Not anti-aliased, so that rows meet without a seam.
+      ..clipRect(Offset.zero & size, doAntiAlias: false)
+      ..drawPath(outline, Paint()..color = color)
+      // Like a `Material`, which clips its border to its shape.
+      ..clipPath(outline);
+    shape.paint(canvas, card);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_BatchCardPainter oldDelegate) =>
+      oldDelegate.color != color ||
+      oldDelegate.borderColor != borderColor ||
+      oldDelegate.radius != radius ||
+      oldDelegate.isFirst != isFirst ||
+      oldDelegate.isLast != isLast;
 }
 
 /// Header of a batch of uploads in a [TransferList]: files and accounts,
@@ -317,28 +375,33 @@ class TransferBatchHeader extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final folderPath = batch.folderPath;
-    final progress = batch.progress;
+    // Every count walks the uploads of the batch: read each one once.
+    final total = batch.entries.length;
+    final finished = batch.finishedCount;
     final failed = batch.failedCount;
     final cancelled = batch.cancelledCount;
-    final (IconData icon, Color color) = !batch.isFinished
+    final isFinished = finished == total;
+    final completed = finished - failed - cancelled;
+    final progress = isFinished ? 1.0 : batch.progress;
+    final (IconData icon, Color color) = !isFinished
         ? (Icons.cloud_upload_rounded, scheme.primary)
         : failed > 0
         ? (Icons.error_rounded, scheme.error)
-        : batch.completedCount == 0
+        : completed == 0
         ? (Icons.cancel_rounded, scheme.outline)
         : (Icons.check_circle_rounded, upTheme.successColor);
     final status = [
-      l10n.batchDone(batch.finishedCount, batch.entries.length),
+      l10n.batchDone(finished, total),
       if (failed > 0) l10n.batchFailedCount(failed),
       if (cancelled > 0) l10n.batchCancelledCount(cancelled),
-      if (!batch.isFinished) '${(progress * 100).floor()} %',
+      if (!isFinished) l10n.formatPercent(progress),
     ].join(' · ');
     final expanded = this.expanded;
     final onExpandedChanged = this.onExpandedChanged;
 
     const dense = VisualDensity.compact;
     final actions = <Widget>[
-      if (!batch.isFinished && onCancel != null)
+      if (!isFinished && onCancel != null)
         IconButton(
           key: ValueKey('upcloud-batch-cancel-${batch.id}'),
           visualDensity: dense,
@@ -354,7 +417,7 @@ class TransferBatchHeader extends StatelessWidget {
           tooltip: l10n.retryFailed,
           onPressed: onRetryFailed,
         ),
-      if (batch.finishedCount > 0 && onClear != null)
+      if (finished > 0 && onClear != null)
         IconButton(
           key: ValueKey('upcloud-batch-clear-${batch.id}'),
           visualDensity: dense,
@@ -373,15 +436,7 @@ class TransferBatchHeader extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: extent,
-                height: extent,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(extent / 4),
-                ),
-                child: Icon(icon, color: color, size: extent * 0.6),
-              ),
+              TintedIconBox(icon: icon, color: color, size: extent),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
@@ -444,7 +499,7 @@ class TransferBatchHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (!batch.isFinished)
+                if (!isFinished)
                   Padding(
                     padding: const EdgeInsetsDirectional.only(top: 8, end: 8),
                     child: LinearProgressIndicator(
