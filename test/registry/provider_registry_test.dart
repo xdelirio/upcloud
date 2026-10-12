@@ -36,7 +36,7 @@ Map<String, Object?> _xvs(String id, {String? apiBase}) => {
 void main() {
   group('bundled registry', () {
     test('is in sync with registry/providers.json', () {
-      final file = File('../../registry/providers.json');
+      final file = File('registry/providers.json');
       if (!file.existsSync()) {
         markTestSkipped('Repository file not available');
         return;

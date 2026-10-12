@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:upcloud/src/l10n/upcloud_localizations.dart';
 import 'package:upcloud/src/theme/upcloud_theme.dart';
 import 'package:upcloud/src/utils/file_kind.dart';
+import 'package:upcloud/src/widgets/common/tinted_icon_box.dart';
 import 'package:upcloud/upcloud.dart';
 
 /// How a [CloudEntryTile] is laid out.
@@ -177,6 +178,11 @@ class _GridPreview extends StatelessWidget {
     if (thumbnail == null) return icon;
     return Image.network(
       thumbnail.toString(),
+      // Decode at the widest size of a grid tile, not the source resolution.
+      cacheWidth:
+          (theme.gridMaxCrossAxisExtent *
+                  MediaQuery.devicePixelRatioOf(context))
+              .round(),
       fit: BoxFit.cover,
       errorBuilder: (context, error, stackTrace) => icon,
     );
@@ -199,15 +205,7 @@ class CloudEntryIcon extends StatelessWidget {
     final theme = UpCloudTheme.of(context);
     final kind = entry.kind;
     final color = theme.colorFor(kind);
-    final icon = Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(size / 4),
-      ),
-      child: Icon(kind.icon, color: color, size: size * 0.6),
-    );
+    final icon = TintedIconBox(icon: kind.icon, color: color, size: size);
     final thumbnail = switch (entry) {
       CloudFile(:final thumbnailUrl) => thumbnailUrl,
       CloudFolder() => null,
@@ -219,6 +217,7 @@ class CloudEntryIcon extends StatelessWidget {
         thumbnail.toString(),
         width: size,
         height: size,
+        cacheWidth: (size * MediaQuery.devicePixelRatioOf(context)).round(),
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) => icon,
       ),

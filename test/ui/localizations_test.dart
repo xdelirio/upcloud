@@ -115,8 +115,5 @@ void main() {
       es.credentialLabel(const CredentialField(id: 'token', label: 'Token')),
       'Token',
     );
-    for (final capability in Capability.values) {
-      expect(es.capability(capability), isNotEmpty);
-    }
   });
 }

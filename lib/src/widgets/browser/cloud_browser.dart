@@ -11,47 +11,15 @@ import 'package:upcloud/src/utils/file_kind.dart';
 import 'package:upcloud/src/widgets/browser/cloud_breadcrumbs.dart';
 import 'package:upcloud/src/widgets/browser/cloud_entry_tile.dart';
 import 'package:upcloud/src/widgets/browser/folder_picker_dialog.dart';
+import 'package:upcloud/src/widgets/browser/remote_upload_dialog.dart';
 import 'package:upcloud/src/widgets/common/dialogs.dart';
+import 'package:upcloud/src/widgets/common/menu_row.dart';
 import 'package:upcloud/src/widgets/common/message_view.dart';
 import 'package:upcloud/upcloud.dart';
 
 /// Returns the files to upload, e.g. using a file picker. An empty list
 /// cancels the upload.
 typedef PickUploadSources = Future<List<UploadSource>> Function();
-
-/// Builds a custom widget for an entry of a [CloudBrowser].
-typedef CloudEntryWidgetBuilder = Widget Function(
-  BuildContext context,
-  CloudEntryItem item,
-);
-
-/// Builds the error state of a [CloudBrowser].
-typedef CloudBrowserErrorBuilder = Widget Function(
-  BuildContext context,
-  UpCloudException error,
-  VoidCallback retry,
-);
-
-/// An extra action shown in the "New" menu of a [CloudBrowser].
-@immutable
-class CloudBrowserAction {
-  /// Creates an action.
-  const CloudBrowserAction({
-    required this.icon,
-    required this.label,
-    required this.onPressed,
-  });
-
-  /// Icon of the menu item.
-  final IconData icon;
-
-  /// Text of the menu item.
-  final String label;
-
-  /// Called when the item is selected.
-  final void Function(BuildContext context, CloudBrowserController controller)
-  onPressed;
-}
 
 /// An action that can run on a [CloudEntry].
 @immutable
@@ -75,46 +43,6 @@ class CloudEntryAction {
 
   /// Whether the action deletes data (shown in the error color).
   final bool isDestructive;
-}
-
-/// Everything needed to build an entry of a [CloudBrowser].
-@immutable
-class CloudEntryItem {
-  /// Creates the item data.
-  const CloudEntryItem({
-    required this.entry,
-    required this.layout,
-    required this.isSelected,
-    required this.selectionMode,
-    required this.onTap,
-    required this.onLongPress,
-    required this.actions,
-    this.menuButton,
-  });
-
-  /// The entry to show.
-  final CloudEntry entry;
-
-  /// Current layout of the browser.
-  final CloudEntryLayout layout;
-
-  /// Whether the entry is selected.
-  final bool isSelected;
-
-  /// Whether the browser is in selection mode.
-  final bool selectionMode;
-
-  /// Default tap behavior (open folder, toggle selection, file actions).
-  final VoidCallback onTap;
-
-  /// Default long-press behavior (toggle selection), if enabled.
-  final VoidCallback? onLongPress;
-
-  /// Actions available for the entry.
-  final List<CloudEntryAction> actions;
-
-  /// Default popup menu with [actions], `null` when there are none.
-  final Widget? menuButton;
 }
 
 /// A file manager view of one account: breadcrumbs, pull-to-refresh,
@@ -147,18 +75,8 @@ class CloudBrowser extends StatefulWidget {
     this.accountId,
     this.pageSize = 50,
     this.onPickFiles,
-    this.onFileTap,
     this.layout = CloudEntryLayout.list,
-    this.showToolbar = true,
-    this.enableSelection = true,
-    this.enableSearch = true,
     this.handleBackButton = true,
-    this.actions = const [],
-    this.entryActions,
-    this.entryBuilder,
-    this.emptyBuilder,
-    this.errorBuilder,
-    this.loadingBuilder,
     this.padding,
     super.key,
   }) : assert(
@@ -178,44 +96,12 @@ class CloudBrowser extends StatefulWidget {
   /// Picks files to upload. The upload action is hidden when `null`.
   final PickUploadSources? onPickFiles;
 
-  /// Called when a file is tapped outside selection mode.
-  ///
-  /// Defaults to a bottom sheet with the file actions.
-  final ValueChanged<CloudFile>? onFileTap;
-
   /// Initial layout. The toolbar lets the user switch it.
   final CloudEntryLayout layout;
-
-  /// Whether to show breadcrumbs and actions above the entries.
-  final bool showToolbar;
-
-  /// Whether long-pressing an entry selects it.
-  final bool enableSelection;
-
-  /// Whether to offer search when the provider supports it.
-  final bool enableSearch;
 
   /// Whether the system back button leaves selection, closes the search or
   /// opens the parent folder before leaving the route.
   final bool handleBackButton;
-
-  /// Extra actions shown in the "New" menu.
-  final List<CloudBrowserAction> actions;
-
-  /// Extra actions for an entry, shown after the built-in ones.
-  final List<CloudEntryAction> Function(CloudEntry entry)? entryActions;
-
-  /// Replaces the default [CloudEntryTile].
-  final CloudEntryWidgetBuilder? entryBuilder;
-
-  /// Replaces the empty folder view.
-  final WidgetBuilder? emptyBuilder;
-
-  /// Replaces the error view shown when the folder cannot be loaded.
-  final CloudBrowserErrorBuilder? errorBuilder;
-
-  /// Replaces the initial loading indicator.
-  final WidgetBuilder? loadingBuilder;
 
   /// Padding around the entries, below the toolbar. Use it to keep the
   /// last entries clear of floating widgets, e.g. a bottom navigation bar
@@ -308,7 +194,7 @@ class _CloudBrowserState extends State<CloudBrowser> {
         Widget content = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (widget.showToolbar) _buildToolbar(context, state),
+            _buildToolbar(context, state),
             SizedBox(
               height: 2,
               child: state.isBusy || (state.isLoading && state.hasLoaded)
@@ -400,7 +286,7 @@ class _CloudBrowserState extends State<CloudBrowser> {
 
   Widget _buildMainBar(BuildContext context, CloudBrowserState state) {
     final l10n = _l10n;
-    final addItems = _addMenuItems(context);
+    final addItems = _addMenuItems();
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 520;
@@ -424,7 +310,7 @@ class _CloudBrowserState extends State<CloudBrowser> {
                 ),
               ),
             ),
-            if (widget.enableSearch && _controller.canSearch)
+            if (_controller.canSearch)
               IconButton(
                 icon: const Icon(Icons.search_rounded),
                 tooltip: l10n.search,
@@ -469,7 +355,7 @@ class _CloudBrowserState extends State<CloudBrowser> {
     );
   }
 
-  List<PopupMenuEntry<VoidCallback>> _addMenuItems(BuildContext context) {
+  List<PopupMenuEntry<VoidCallback>> _addMenuItems() {
     final l10n = _l10n;
     return [
       if (_controller.canCreateFolder)
@@ -490,34 +376,16 @@ class _CloudBrowserState extends State<CloudBrowser> {
           l10n.uploadFromUrl,
           () => unawaited(_uploadFromUrl()),
         ),
-      for (final action in widget.actions)
-        _menuItem(
-          action.icon,
-          action.label,
-          () => action.onPressed(context, _controller),
-        ),
     ];
   }
 
   PopupMenuItem<VoidCallback> _menuItem(
     IconData icon,
     String label,
-    VoidCallback onSelected, {
-    Color? color,
-  }) => PopupMenuItem<VoidCallback>(
+    VoidCallback onSelected,
+  ) => PopupMenuItem<VoidCallback>(
     value: onSelected,
-    child: Row(
-      children: [
-        Icon(icon, color: color),
-        const SizedBox(width: 12),
-        Flexible(
-          child: Text(
-            label,
-            style: color == null ? null : TextStyle(color: color),
-          ),
-        ),
-      ],
-    ),
+    child: MenuRow(icon: icon, label: label),
   );
 
   Widget _buildSearchBar(BuildContext context, CloudBrowserState state) {
@@ -603,8 +471,7 @@ class _CloudBrowserState extends State<CloudBrowser> {
   Widget _buildBody(BuildContext context, CloudBrowserState state) {
     final error = state.error;
     if (state.isLoading && state.entries.isEmpty && error == null) {
-      return widget.loadingBuilder?.call(context) ??
-          const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator());
     }
     final padding = widget.padding;
     // Empty and error views fill the viewport, inside the padding.
@@ -616,37 +483,33 @@ class _CloudBrowserState extends State<CloudBrowser> {
     if (error != null && state.entries.isEmpty) {
       slivers = [
         fill(
-          widget.errorBuilder?.call(context, error, _retry) ??
-              MessageView(
-                icon: Icons.cloud_off_rounded,
-                title: _l10n.loadFolderFailed,
-                message: _l10n.errorMessage(error),
-                isError: true,
-                action: FilledButton.tonalIcon(
-                  onPressed: _retry,
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: Text(_l10n.retry),
-                ),
-              ),
+          MessageView(
+            icon: Icons.cloud_off_rounded,
+            title: _l10n.loadFolderFailed,
+            message: _l10n.errorMessage(error),
+            isError: true,
+            action: FilledButton.tonalIcon(
+              onPressed: _retry,
+              icon: const Icon(Icons.refresh_rounded),
+              label: Text(_l10n.retry),
+            ),
+          ),
         ),
       ];
     } else if (state.isEmpty) {
       final query = state.query;
       slivers = [
         fill(
-          widget.emptyBuilder?.call(context) ??
-              (query != null
-                  ? MessageView(
-                      icon: Icons.search_off_rounded,
-                      title: _l10n.noSearchResults(query),
-                    )
-                  : MessageView(
-                      icon: Icons.folder_open_rounded,
-                      title: _l10n.emptyFolder,
-                      message: _controller.canUpload
-                          ? _l10n.emptyFolderHint
-                          : null,
-                    )),
+          query != null
+              ? MessageView(
+                  icon: Icons.search_off_rounded,
+                  title: _l10n.noSearchResults(query),
+                )
+              : MessageView(
+                  icon: Icons.folder_open_rounded,
+                  title: _l10n.emptyFolder,
+                  message: _controller.canUpload ? _l10n.emptyFolderHint : null,
+                ),
         ),
       ];
     } else {
@@ -777,17 +640,10 @@ class _CloudBrowserState extends State<CloudBrowser> {
         case CloudFolder():
           unawaited(_controller.openFolder(entry));
         case CloudFile():
-          if (widget.onFileTap case final onFileTap?) {
-            onFileTap(entry);
-          } else {
-            unawaited(_showEntrySheet(entry, actions));
-          }
+          unawaited(_showEntrySheet(entry, actions));
       }
     }
 
-    final onLongPress = widget.enableSelection
-        ? () => _controller.toggleSelection(entry)
-        : null;
     final menuButton = actions.isEmpty || selectionMode
         ? null
         : PopupMenuButton<CloudEntryAction>(
@@ -798,42 +654,38 @@ class _CloudBrowserState extends State<CloudBrowser> {
               for (final action in actions)
                 PopupMenuItem(
                   value: action,
-                  child: _ActionRow(action: action),
+                  child: MenuRow(
+                    icon: action.icon,
+                    label: action.label,
+                    color: action.isDestructive
+                        ? Theme.of(context).colorScheme.error
+                        : null,
+                  ),
                 ),
             ],
           );
-    final item = CloudEntryItem(
+    return CloudEntryTile(
+      key: ValueKey(entry.selectionKey),
       entry: entry,
       layout: _layout,
-      isSelected: isSelected,
+      selected: isSelected,
       selectionMode: selectionMode,
       onTap: onTap,
-      onLongPress: onLongPress,
-      actions: actions,
-      menuButton: menuButton,
+      onLongPress: () => _controller.toggleSelection(entry),
+      trailing: menuButton,
     );
-    return widget.entryBuilder?.call(context, item) ??
-        CloudEntryTile(
-          key: ValueKey(entry.selectionKey),
-          entry: entry,
-          layout: _layout,
-          selected: isSelected,
-          selectionMode: selectionMode,
-          onTap: onTap,
-          onLongPress: onLongPress,
-          trailing: menuButton,
-        );
   }
 
   List<CloudEntryAction> _actionsFor(CloudEntry entry) {
     final l10n = _l10n;
     final controller = _controller;
     return [
-      if (entry case final CloudFile file when controller.canShare(file))
+      if (entry case CloudFile(:final pageUrl?) && final file
+          when controller.canShare(file))
         CloudEntryAction(
           icon: Icons.link_rounded,
           label: l10n.copyLink,
-          onSelected: (_, _) => unawaited(_copyLink(file)),
+          onSelected: (_, _) => unawaited(_copyLink(pageUrl)),
         ),
       if (controller.canRename(entry))
         CloudEntryAction(
@@ -854,7 +706,6 @@ class _CloudBrowserState extends State<CloudBrowser> {
           isDestructive: true,
           onSelected: (_, _) => unawaited(_delete([entry])),
         ),
-      ...?widget.entryActions?.call(entry),
     ];
   }
 
@@ -985,12 +836,7 @@ class _CloudBrowserState extends State<CloudBrowser> {
     if (mounted) _controller.clearSelection();
   }
 
-  Future<void> _copyLink(CloudFile file) async {
-    final link = file.pageUrl;
-    if (link == null) {
-      _snack(_l10n.noLinks);
-      return;
-    }
+  Future<void> _copyLink(Uri link) async {
     await Clipboard.setData(ClipboardData(text: link.toString()));
     if (mounted) _snack(_l10n.linkCopied);
   }
@@ -1005,40 +851,12 @@ class _CloudBrowserState extends State<CloudBrowser> {
   });
 
   Future<void> _uploadFromUrl() async {
-    final result = await showDialog<(Uri, String?)>(
-      context: context,
-      builder: (context) => const _RemoteUploadDialog(),
-    );
+    final result = await showRemoteUploadDialog(context);
     if (result == null || !mounted) return;
     await _guard(() async {
       await _controller.uploadFromUrl(result.$1, name: result.$2);
       if (mounted) _snack(_l10n.remoteUploadStarted);
     });
-  }
-}
-
-class _ActionRow extends StatelessWidget {
-  const _ActionRow({required this.action});
-
-  final CloudEntryAction action;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = action.isDestructive
-        ? Theme.of(context).colorScheme.error
-        : null;
-    return Row(
-      children: [
-        Icon(action.icon, color: color),
-        const SizedBox(width: 12),
-        Flexible(
-          child: Text(
-            action.label,
-            style: color == null ? null : TextStyle(color: color),
-          ),
-        ),
-      ],
-    );
   }
 }
 
@@ -1070,77 +888,6 @@ class _InlineError extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _RemoteUploadDialog extends StatefulWidget {
-  const _RemoteUploadDialog();
-
-  @override
-  State<_RemoteUploadDialog> createState() => _RemoteUploadDialogState();
-}
-
-class _RemoteUploadDialogState extends State<_RemoteUploadDialog> {
-  final _formKey = GlobalKey<FormState>();
-  final _url = TextEditingController();
-  final _name = TextEditingController();
-
-  @override
-  void dispose() {
-    _url.dispose();
-    _name.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
-    final name = _name.text.trim();
-    Navigator.of(context)
-        .pop((parseHttpUrl(_url.text)!, name.isEmpty ? null : name));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = UpCloudLocalizations.of(context);
-    return AlertDialog(
-      title: Text(l10n.uploadFromUrl),
-      content: Form(
-        key: _formKey,
-        child: SizedBox(
-          width: 420,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: _url,
-                autofocus: true,
-                keyboardType: TextInputType.url,
-                decoration: InputDecoration(
-                  labelText: l10n.url,
-                  hintText: 'https://',
-                  prefixIcon: const Icon(Icons.link_rounded),
-                ),
-                validator: (value) =>
-                    parseHttpUrl(value ?? '') == null ? l10n.invalidUrl : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _name,
-                decoration: InputDecoration(labelText: l10n.fileNameOptional),
-                onFieldSubmitted: (_) => _submit(),
-              ),
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(l10n.cancel),
-        ),
-        FilledButton(onPressed: _submit, child: Text(l10n.upload)),
-      ],
     );
   }
 }

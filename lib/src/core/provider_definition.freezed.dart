@@ -305,7 +305,7 @@ as String?,
 mixin _$ProviderOptions {
 
 /// Replaces the provider's API base URL. Useful when a service moves to
-/// a new domain before the package is updated.
+/// a new domain before the app is updated.
  Uri? get baseUrl;/// Alternative API base URLs tried in order when the base URL cannot be
 /// reached (connection errors only).
  List<Uri> get mirrors;/// Replaces the provider's default limits.
@@ -536,7 +536,7 @@ class _ProviderOptions implements ProviderOptions {
   
 
 /// Replaces the provider's API base URL. Useful when a service moves to
-/// a new domain before the package is updated.
+/// a new domain before the app is updated.
 @override final  Uri? baseUrl;
 /// Alternative API base URLs tried in order when the base URL cannot be
 /// reached (connection errors only).

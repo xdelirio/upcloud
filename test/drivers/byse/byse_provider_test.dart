@@ -37,6 +37,25 @@ void main() {
       expect(byse.capabilities, contains(Capability.createFolder));
     });
 
+    test('the provider leaves out the capabilities the entry disables', () {
+      final definition = byseDriver.definitionFor(
+        const ProviderConfig(
+          id: 'byse-lite',
+          name: 'Byse Lite',
+          driver: ByseDriver.driverId,
+          disabledCapabilities: ['remoteUpload', 'search'],
+        ),
+      );
+      final lite = ByseHarness(definition: definition).provider;
+
+      expect(lite.capabilities, definition.capabilities);
+      expect(lite.supports(Capability.remoteUpload), isFalse);
+      expect(lite.supports(Capability.search), isFalse);
+      expect(lite.supports(Capability.upload), isTrue);
+      // Created from code, without a registry entry.
+      expect(provider.capabilities, byseCapabilities);
+    });
+
     test('defaults to video extensions and 2 GB per file', () {
       expect(byseLimits.maxFileSize, const DataSize.mb(2048));
       expect(byseLimits.allowedExtensions, containsAll(['mp4', 'mkv']));
@@ -183,8 +202,30 @@ void main() {
       );
 
       expect(h.paths, ['file/list']);
-      expect(h.requests.single.queryParameters['page'], 2);
+      expect(h.requests.single.queryParameters['page'], '2');
       expect(second.hasMore, isFalse);
+    });
+  });
+
+  group('listFolder errors', () {
+    test('throws the error of the failed request as it is', () async {
+      h
+        ..onGet(
+          'folder/list',
+          byseFixture('folder_list.json'),
+          query: {'fld_id': '0'},
+        )
+        ..onGet(
+          'file/list',
+          byseFixture('error_invalid_key.json'),
+          query: {'fld_id': '0', 'page': '1', 'per_page': '50'},
+        );
+
+      await expectLater(
+        provider.listFolder(null),
+        throwsA(isA<AuthenticationException>()),
+      );
+      expect(h.paths, ['folder/list', 'file/list']);
     });
   });
 
@@ -791,6 +832,32 @@ void main() {
             .having((e) => e.statusCode, 'statusCode', 500)
             .having((e) => e.message, 'message', 'Database is down'),
         code: 500,
+      );
+    });
+
+    test('HTTP 429 keeps Retry-After over the API message', () async {
+      h.adapter.onGet(
+        'account/info',
+        (s) => s.reply(
+          429,
+          {'status': 429, 'msg': 'Too many requests'},
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+            'retry-after': ['7'],
+          },
+        ),
+        queryParameters: {'key': testApiKey},
+      );
+
+      await expectLater(
+        provider.accountInfo(),
+        throwsA(
+          isA<RateLimitedException>().having(
+            (e) => e.retryAfter,
+            'retryAfter',
+            const Duration(seconds: 7),
+          ),
+        ),
       );
     });
 

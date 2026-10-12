@@ -190,6 +190,18 @@ void main() {
         expect(chunks(), [('folders', '1'), ('folders', '2'), ('files', '1')]);
       });
 
+      test('later pages reuse the chunks of the listing', () async {
+        await list(1);
+        await list(2);
+        await list(3);
+        expect(chunks(), [('folders', '1'), ('folders', '2'), ('files', '1')]);
+
+        // A new listing downloads them again.
+        await list(1);
+        expect(chunks().last, ('folders', '1'));
+        expect(chunks(), hasLength(4));
+      });
+
       test('a page spanning two file chunks', () async {
         final page = await list(5);
 

@@ -5,10 +5,12 @@ import 'package:upcloud/src/controllers/providers_controller.dart';
 import 'package:upcloud/src/controllers/providers_state.dart';
 import 'package:upcloud/src/l10n/upcloud_localizations.dart';
 import 'package:upcloud/src/scope/upcloud_scope.dart';
-import 'package:upcloud/src/widgets/accounts/provider_picker.dart';
-import 'package:upcloud/src/widgets/common/dialogs.dart';
+import 'package:upcloud/src/widgets/accounts/provider_avatar.dart';
+import 'package:upcloud/src/widgets/common/busy_button.dart';
+import 'package:upcloud/src/widgets/common/menu_row.dart';
 import 'package:upcloud/src/widgets/common/message_view.dart';
 import 'package:upcloud/src/widgets/providers/provider_editor.dart';
+import 'package:upcloud/src/widgets/providers/provider_helpers.dart';
 import 'package:upcloud/upcloud.dart';
 
 /// Manages the providers of the registry: enable or disable them, edit
@@ -24,7 +26,6 @@ class ProviderList extends StatefulWidget {
     this.controller,
     this.onEdit,
     this.onAdd,
-    this.showUpdateCard = true,
     this.showAddButton = true,
     this.padding,
     super.key,
@@ -38,9 +39,6 @@ class ProviderList extends StatefulWidget {
 
   /// Called to add a custom provider. Defaults to [showProviderEditor].
   final VoidCallback? onAdd;
-
-  /// Whether to show the "check for updates" card.
-  final bool showUpdateCard;
 
   /// Whether to show an "Add provider" button at the end of the list.
   final bool showAddButton;
@@ -97,16 +95,8 @@ class _ProviderListState extends State<ProviderList> {
   void _snack(String message, {bool isError = false}) =>
       showUpCloudSnackBar(context, message, isError: isError);
 
-  String _describe(Object? error) {
-    final l10n = UpCloudLocalizations.of(context);
-    return switch (error) {
-      InvalidProviderConfigException(:final problems) =>
-        problems.map(l10n.configProblem).join('\n'),
-      UpCloudException() => l10n.errorMessage(error),
-      FormatException(:final message) => message,
-      _ => '$error',
-    };
-  }
+  String _describe(Object? error) =>
+      describeProviderError(UpCloudLocalizations.of(context), error);
 
   Future<void> _checkForUpdates() async {
     final l10n = UpCloudLocalizations.of(context);
@@ -161,16 +151,10 @@ class _ProviderListState extends State<ProviderList> {
   }
 
   Future<void> _reset(ProviderConfig config) async {
-    final l10n = UpCloudLocalizations.of(context);
-    final isCustom = _controller.state.isCustom(config.id);
-    final confirmed = await showConfirmDialog(
+    final confirmed = await confirmProviderReset(
       context,
-      title: isCustom ? l10n.delete : l10n.resetToDefault,
-      message: isCustom
-          ? l10n.deleteProviderMessage(config.name)
-          : l10n.resetProviderMessage(config.name),
-      confirmLabel: isCustom ? l10n.delete : l10n.resetToDefault,
-      destructive: true,
+      config: config,
+      isCustom: _controller.state.isCustom(config.id),
     );
     if (!confirmed || !mounted) return;
     try {
@@ -194,11 +178,10 @@ class _ProviderListState extends State<ProviderList> {
         return ListView(
           padding: widget.padding,
           children: [
-            if (widget.showUpdateCard)
-              _UpdateCard(
-                state: state,
-                onCheck: () => unawaited(_checkForUpdates()),
-              ),
+            _UpdateCard(
+              state: state,
+              onCheck: () => unawaited(_checkForUpdates()),
+            ),
             if (orphanIssues.isNotEmpty) _IssuesCard(issues: orphanIssues),
             if (state.configs.isEmpty)
               MessageView(
@@ -288,15 +271,12 @@ class _UpdateCard extends StatelessWidget {
                 ),
               ],
             ),
-            FilledButton.tonalIcon(
-              onPressed: state.isRefreshing ? null : onCheck,
-              icon: state.isRefreshing
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.sync_rounded),
-              label: Text(l10n.checkForUpdates),
+            BusyButton(
+              busy: state.isRefreshing,
+              tonal: true,
+              icon: Icons.sync_rounded,
+              label: l10n.checkForUpdates,
+              onPressed: onCheck,
             ),
           ],
         ),
@@ -343,7 +323,7 @@ class _IssuesCard extends StatelessWidget {
             const SizedBox(height: 8),
             for (final issue in issues)
               Text(
-                '• $issue',
+                '• ${issue.providerId}: ${l10n.registryIssue(issue)}',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: scheme.onErrorContainer,
                 ),
@@ -417,7 +397,7 @@ class _ProviderConfigTile extends StatelessWidget {
           Text(details, maxLines: 1, overflow: TextOverflow.ellipsis),
           for (final issue in issues)
             Text(
-              issue.message,
+              l10n.registryIssue(issue),
               style: theme.textTheme.bodySmall?.copyWith(color: scheme.error),
             ),
           if (badges.isNotEmpty)
@@ -443,12 +423,12 @@ class _ProviderConfigTile extends StatelessWidget {
             itemBuilder: (context) => [
               PopupMenuItem(
                 value: onTap,
-                child: _MenuRow(icon: Icons.edit_outlined, label: l10n.edit),
+                child: MenuRow(icon: Icons.edit_outlined, label: l10n.edit),
               ),
               if (isModified)
                 PopupMenuItem(
                   value: onReset,
-                  child: _MenuRow(
+                  child: MenuRow(
                     icon: isCustom
                         ? Icons.delete_outline_rounded
                         : Icons.settings_backup_restore_rounded,
@@ -462,26 +442,4 @@ class _ProviderConfigTile extends StatelessWidget {
       ),
     );
   }
-}
-
-class _MenuRow extends StatelessWidget {
-  const _MenuRow({required this.icon, required this.label, this.color});
-
-  final IconData icon;
-  final String label;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Icon(icon, color: color),
-      const SizedBox(width: 12),
-      Flexible(
-        child: Text(
-          label,
-          style: color == null ? null : TextStyle(color: color),
-        ),
-      ),
-    ],
-  );
 }

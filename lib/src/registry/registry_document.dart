@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:upcloud/src/core/http/json_readers.dart';
 
-/// Newest registry format this version of the package understands.
+/// Newest registry format this version of the app understands.
 const supportedRegistrySchema = 1;
 
 /// The contents of a `providers.json` registry file.
@@ -66,7 +66,7 @@ final class RegistryDocument {
   /// Raw provider entries (see `ProviderConfig`).
   final List<Map<String, Object?>> providers;
 
-  /// Whether this version of the package can read the document.
+  /// Whether this version of the app can read the document.
   bool get isSupported => schemaVersion <= supportedRegistrySchema;
 
   /// Entry with [id], or `null`.

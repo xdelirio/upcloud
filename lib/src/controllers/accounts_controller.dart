@@ -17,18 +17,16 @@ import 'package:upcloud/upcloud.dart';
 /// Operations store their error in [AccountsState.error] and also throw it
 /// as an [UpCloudException].
 class AccountsController extends ChangeNotifier {
-  /// Creates a controller for [upcloud].
-  ///
-  /// Saved accounts are loaded with `UpCloud.init` unless [initialize] is
-  /// false.
-  AccountsController(this.upcloud, {bool initialize = true})
+  /// Creates a controller for [upcloud] and loads the saved accounts with
+  /// `UpCloud.init`.
+  AccountsController(this.upcloud)
     : _state = AccountsState(accounts: upcloud.accounts) {
     _subscription = upcloud.accountChanges.listen(_onAccounts);
     // Provider names and icons may change with registry updates.
     _providersSubscription = upcloud.providerChanges.listen(
       (_) => _emit(_state),
     );
-    if (initialize) unawaited(init());
+    unawaited(init());
   }
 
   /// The wrapped instance.
@@ -39,6 +37,9 @@ class AccountsController extends ChangeNotifier {
   _providersSubscription;
   AccountsState _state;
   var _disposed = false;
+
+  /// Operations in progress: they may overlap.
+  var _busy = 0;
 
   /// Current state.
   AccountsState get state => _state;
@@ -57,7 +58,7 @@ class AccountsController extends ChangeNotifier {
       await upcloud.init();
       _emit(_state.copyWith(isLoading: false, accounts: upcloud.accounts));
     } on Object catch (e, st) {
-      _emit(_state.copyWith(isLoading: false, error: _wrap(e, st)));
+      _emit(_state.copyWith(isLoading: false, error: wrapError(e, st)));
     }
   }
 
@@ -119,7 +120,7 @@ class AccountsController extends ChangeNotifier {
         status = const AccountStatus.connected();
       }
     } on Object catch (e, st) {
-      status = AccountStatus.failed(_wrap(e, st));
+      status = AccountStatus.failed(wrapError(e, st));
     }
     if (upcloud.account(accountId) != null) _setStatus(accountId, status);
     return status;
@@ -135,14 +136,17 @@ class AccountsController extends ChangeNotifier {
   }
 
   Future<T> _run<T>(Future<T> Function() action) async {
+    _busy++;
     _emit(_state.copyWith(isBusy: true, error: null));
     try {
       final result = await action();
-      _emit(_state.copyWith(isBusy: false, accounts: upcloud.accounts));
+      _busy--;
+      _emit(_state.copyWith(isBusy: _busy > 0, accounts: upcloud.accounts));
       return result;
     } on Object catch (e, st) {
-      final error = _wrap(e, st);
-      _emit(_state.copyWith(isBusy: false, error: error));
+      _busy--;
+      final error = wrapError(e, st);
+      _emit(_state.copyWith(isBusy: _busy > 0, error: error));
       if (e is UpCloudException) rethrow;
       Error.throwWithStackTrace(error, st);
     }
@@ -166,11 +170,6 @@ class AccountsController extends ChangeNotifier {
       ),
     );
   }
-
-  UpCloudException _wrap(Object error, StackTrace stackTrace) =>
-      error is UpCloudException
-      ? error
-      : ProviderException('$error', cause: error, stackTrace: stackTrace);
 
   void _emit(AccountsState state) {
     if (_disposed) return;

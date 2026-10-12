@@ -26,22 +26,20 @@ class CloudBrowserController extends ChangeNotifier {
   ///
   /// Pass [upcloud] and [accountId] to enable [upload], whose uploads
   /// go through `UpCloud.transfers`. [initialPath] opens a folder
-  /// other than the root. The first page is loaded right away unless
-  /// [loadImmediately] is false.
+  /// other than the root. The first page is loaded right away.
   CloudBrowserController({
     required this.provider,
     this.upcloud,
     this.accountId,
     this.pageSize = 50,
     List<CloudBreadcrumb>? initialPath,
-    bool loadImmediately = true,
   }) : assert(
          (upcloud == null) == (accountId == null),
          'Pass both upcloud and accountId, or neither of them',
        ),
        assert(pageSize > 0, 'pageSize must be positive'),
        _state = CloudBrowserState(path: _normalizePath(initialPath)) {
-    if (loadImmediately) unawaited(refresh());
+    unawaited(refresh());
   }
 
   /// Creates a controller for account [accountId] of [upcloud], with
@@ -51,14 +49,12 @@ class CloudBrowserController extends ChangeNotifier {
     String accountId, {
     int pageSize = 50,
     List<CloudBreadcrumb>? initialPath,
-    bool loadImmediately = true,
   }) => CloudBrowserController(
     provider: upcloud.connect(accountId),
     upcloud: upcloud,
     accountId: accountId,
     pageSize: pageSize,
     initialPath: initialPath,
-    loadImmediately: loadImmediately,
   );
 
   /// Provider being browsed.
@@ -214,7 +210,9 @@ class CloudBrowserController extends ChangeNotifier {
       );
     } on Object catch (e, st) {
       if (generation != _generation || _disposed) return;
-      _emit(_state.copyWith(isLoadingMore: false, loadMoreError: _wrap(e, st)));
+      _emit(
+        _state.copyWith(isLoadingMore: false, loadMoreError: wrapError(e, st)),
+      );
     }
   }
 
@@ -270,7 +268,7 @@ class CloudBrowserController extends ChangeNotifier {
       );
     } on Object catch (e, st) {
       if (generation != _generation || _disposed) return;
-      _emit(_state.copyWith(isLoading: false, error: _wrap(e, st)));
+      _emit(_state.copyWith(isLoading: false, error: wrapError(e, st)));
     }
   }
 
@@ -362,24 +360,19 @@ class CloudBrowserController extends ChangeNotifier {
   ///
   /// Every entry is attempted; the first error is thrown at the end.
   Future<void> delete(Iterable<CloudEntry> entries) => _runAction(() async {
-    final targets = entries.toList();
-    final deleted = <String>{};
-    UpCloudException? firstError;
-    for (final entry in targets) {
-      try {
-        switch (entry) {
-          case CloudFile(:final id):
-            await _require<FileManaging>('delete files').deleteFile(id);
-          case CloudFolder(:final id):
-            await _require<FolderManaging>('delete folders').deleteFolder(id);
-        }
-        deleted.add(entry.selectionKey);
-      } on UpCloudException catch (e) {
-        firstError ??= e;
-      }
-    }
+    final (deleted, error) = await _forEachEntry(
+      entries,
+      (entry) => switch (entry) {
+        CloudFile(:final id) => _require<FileManaging>(
+          'delete files',
+        ).deleteFile(id),
+        CloudFolder(:final id) => _require<FolderManaging>(
+          'delete folders',
+        ).deleteFolder(id),
+      },
+    );
     _removeKeys(deleted);
-    if (firstError != null) throw firstError;
+    if (error != null) throw error;
   });
 
   /// Moves [entries] into [destination] (`null` is the root).
@@ -387,24 +380,17 @@ class CloudBrowserController extends ChangeNotifier {
   /// Moved entries leave the list unless search results are shown.
   Future<void> move(Iterable<CloudEntry> entries, FolderId? destination) =>
       _runAction(() async {
-        final targets = entries.toList();
-        final moved = <String>{};
-        UpCloudException? firstError;
-        for (final entry in targets) {
-          try {
-            switch (entry) {
-              case CloudFile(:final id):
-                await _require<FileManaging>('move files')
-                    .moveFile(id, destination);
-              case CloudFolder(:final id):
-                await _require<FolderManaging>('move folders')
-                    .moveFolder(id, destination);
-            }
-            moved.add(entry.selectionKey);
-          } on UpCloudException catch (e) {
-            firstError ??= e;
-          }
-        }
+        final (moved, error) = await _forEachEntry(
+          entries,
+          (entry) => switch (entry) {
+            CloudFile(:final id) => _require<FileManaging>(
+              'move files',
+            ).moveFile(id, destination),
+            CloudFolder(:final id) => _require<FolderManaging>(
+              'move folders',
+            ).moveFolder(id, destination),
+          },
+        );
         if (_state.isSearching) {
           for (final key in moved) {
             _update(
@@ -418,8 +404,28 @@ class CloudBrowserController extends ChangeNotifier {
         } else if (destination != _state.folderId) {
           _removeKeys(moved);
         }
-        if (firstError != null) throw firstError;
+        if (error != null) throw error;
       });
+
+  /// Runs [action] for every entry, even after a failure. Returns the
+  /// selection keys of the entries that succeeded and the first error, so
+  /// the list always reflects what changed on the provider.
+  Future<(Set<String>, UpCloudException?)> _forEachEntry(
+    Iterable<CloudEntry> entries,
+    Future<void> Function(CloudEntry entry) action,
+  ) async {
+    final done = <String>{};
+    UpCloudException? firstError;
+    for (final entry in entries.toList()) {
+      try {
+        await action(entry);
+        done.add(entry.selectionKey);
+      } on Object catch (e, st) {
+        firstError ??= wrapError(e, st);
+      }
+    }
+    return (done, firstError);
+  }
 
   /// Asks the provider to fetch [url] into the current folder, optionally
   /// saving it as [name].
@@ -497,7 +503,7 @@ class CloudBrowserController extends ChangeNotifier {
       return result;
     } on Object catch (e, st) {
       _busyActions--;
-      final error = _wrap(e, st);
+      final error = wrapError(e, st);
       _emit(_state.copyWith(isBusy: _busyActions > 0, actionError: error));
       if (e is UpCloudException) rethrow;
       Error.throwWithStackTrace(error, st);
@@ -554,11 +560,6 @@ class CloudBrowserController extends ChangeNotifier {
       ),
     );
   }
-
-  UpCloudException _wrap(Object error, StackTrace stackTrace) =>
-      error is UpCloudException
-      ? error
-      : ProviderException('$error', cause: error, stackTrace: stackTrace);
 
   void _emit(CloudBrowserState state) {
     _state = state;

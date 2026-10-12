@@ -27,11 +27,11 @@ typedef ProviderOptionsBuilder = ProviderOptions Function(
   ProviderDefinition provider,
 );
 
-/// Entry point of the package: available providers, connected accounts,
+/// Entry point of the core: available providers, connected accounts,
 /// uploads and their settings.
 ///
 /// Providers come from the [ProviderRegistry] (the registry bundled with
-/// the package, remote updates and the user's edits) plus any definition
+/// the app, remote updates and the user's edits) plus any definition
 /// passed in `providers`.
 ///
 /// ```dart
@@ -48,7 +48,7 @@ final class UpCloud {
   ///
   /// * `uploadExecutor` sends the bytes of uploads. The app uses
   ///   `BackgroundUploadExecutor` (background uploads); tests can use
-  ///   `FakeUploadExecutor` from `package:upcloud/testing.dart`.
+  ///   `FakeUploadExecutor` from `test/support`.
   /// * [registry] provides the providers described as data. By default it
   ///   uses the built-in drivers, the bundled registry and remote updates,
   ///   keeping downloads and user edits in memory; pass a
@@ -155,6 +155,11 @@ final class UpCloud {
   ProviderDefinition? provider(String id) =>
       _definitions[id] ?? registry.definition(id);
 
+  /// Display data of provider [id]; a placeholder named after the id when
+  /// the provider is unknown (e.g. removed from the registry).
+  ProviderInfo providerInfo(String id) =>
+      provider(id)?.info ?? ProviderInfo(id: id, name: id);
+
   // ---------------------------------------------------------------------------
   // Accounts
   // ---------------------------------------------------------------------------
@@ -225,19 +230,29 @@ final class UpCloud {
       }
     }
     _accounts[account.id] = account;
-    await _persist();
+    try {
+      await _persist();
+    } on Object {
+      // Not saved: a retry must not leave two accounts.
+      _accounts.remove(account.id);
+      _emitAccounts();
+      rethrow;
+    }
     return account;
   }
 
   /// Replaces the saved data of an account (label, credentials, base URL...).
   Future<void> updateAccount(CloudAccount account) async {
-    if (!_accounts.containsKey(account.id)) {
+    final current = _accounts[account.id];
+    if (current == null) {
       throw NotFoundException('Unknown account ${account.id}');
     }
     _accounts[account.id] = account;
-    // New credentials may point to another user: forget its folders.
-    transfers.folders.invalidate(account.id);
-    _dropConnections(where: (a) => a.id == account.id);
+    // A new label keeps the connection; anything else may point to another
+    // user.
+    if (account.copyWith(label: current.label) != current) {
+      _resetConnection(account.id);
+    }
     await _persist();
   }
 
@@ -357,18 +372,25 @@ final class UpCloud {
     final backup = BackupPayload.fromJson(content);
     final replace = mode == BackupImportMode.replace;
 
-    // Providers first: accounts may use a custom provider of the backup.
+    final incoming = {for (final a in backup.accounts) a.id: a};
+    // Merging keeps the current order and adds the new accounts at the
+    // end; replacing uses the order of the backup.
+    final next = {if (!replace) ..._accounts, ...incoming};
+    // Accounts are saved before anything else changes: a failure here
+    // leaves everything as it was, and they are the only data that cannot
+    // be recreated.
+    await _store.save(List.unmodifiable(next.values));
+
+    // Providers before the accounts in memory: accounts may use a custom
+    // provider of the backup.
     if (replace) await registry.resetAll();
     final imported = await registry.importProviders(backup.providers);
 
-    final incoming = {for (final a in backup.accounts) a.id: a};
     var added = 0;
     var updated = 0;
     var removed = 0;
-    if (replace) {
-      for (final id in [..._accounts.keys]) {
-        if (!incoming.containsKey(id) && _forgetAccount(id)) removed++;
-      }
+    for (final id in [..._accounts.keys]) {
+      if (!next.containsKey(id) && _forgetAccount(id)) removed++;
     }
     for (final account in incoming.values) {
       final current = _accounts[account.id];
@@ -376,19 +398,13 @@ final class UpCloud {
         added++;
       } else if (current != account) {
         updated++;
-        transfers.folders.invalidate(account.id);
-        _dropConnections(where: (a) => a.id == account.id);
+        _resetConnection(account.id);
       }
-      _accounts[account.id] = account;
     }
-    if (replace) {
-      // Same order as in the backup.
-      final ordered = {for (final id in incoming.keys) id: _accounts[id]!};
-      _accounts
-        ..clear()
-        ..addAll(ordered);
-    }
-    await _persist();
+    _accounts
+      ..clear()
+      ..addAll(next);
+    _emitAccounts();
 
     final settings = backup.settings;
     if (settings != null) await updateSettings(settings);
@@ -397,10 +413,7 @@ final class UpCloud {
       if (!replace) ..._recentFolderPaths,
       ...backup.recentFolderPaths,
     ]);
-    await _settingsStore.write(
-      recentFolderPathsKey,
-      jsonEncode(_recentFolderPaths),
-    );
+    await _saveRecentFolderPaths();
 
     return BackupImportResult(
       mode: mode,
@@ -600,8 +613,7 @@ final class UpCloud {
     for (final task in transfers.tasks) {
       if (task.accountId == id) transfers.remove(task);
     }
-    transfers.folders.invalidate(id);
-    _dropConnections(where: (a) => a.id == id);
+    _resetConnection(id);
     return _accounts.remove(id) != null;
   }
 
@@ -635,10 +647,26 @@ final class UpCloud {
     });
   }
 
-  Future<void> _persist() async {
-    await _store.save(accounts);
-    _emitAccounts();
+  /// Closes the connection of account [id] and forgets its folders.
+  void _resetConnection(String id) {
+    transfers.folders.invalidate(id);
+    _dropConnections(where: (a) => a.id == id);
   }
+
+  /// Saves the accounts. Listeners are told even when saving fails, as the
+  /// accounts in memory already changed.
+  Future<void> _persist() async {
+    try {
+      await _store.save(accounts);
+    } finally {
+      _emitAccounts();
+    }
+  }
+
+  Future<void> _saveRecentFolderPaths() => _settingsStore.write(
+    recentFolderPathsKey,
+    jsonEncode(_recentFolderPaths),
+  );
 
   void _emitAccounts() {
     if (!_accountChanges.isClosed) _accountChanges.add(accounts);
@@ -676,10 +704,6 @@ final class UpCloud {
     if (path == null || path.isEmpty) return;
     _recentFolderPaths = _uniquePaths([path, ..._recentFolderPaths]);
     // Suggestions only: a failed write must not break the upload.
-    unawaited(
-      _settingsStore
-          .write(recentFolderPathsKey, jsonEncode(_recentFolderPaths))
-          .catchError((Object _) {}),
-    );
+    unawaited(_saveRecentFolderPaths().catchError((Object _) {}));
   }
 }

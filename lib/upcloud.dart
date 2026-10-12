@@ -31,7 +31,6 @@ export 'src/drivers/built_in_drivers.dart';
 export 'src/drivers/byse/byse.dart';
 export 'src/drivers/mediafire/mediafire.dart';
 export 'src/drivers/xvs/xvs.dart';
-export 'src/providers/built_in.dart';
 export 'src/registry/cloud_driver.dart';
 export 'src/registry/config_problem.dart';
 export 'src/registry/provider_config.dart';

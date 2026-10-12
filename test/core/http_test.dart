@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
@@ -44,6 +46,43 @@ void main() {
       );
     });
 
+    test('does not show the developer message of Dio', () {
+      expect(mapDioException(response(500)).message, 'HTTP 500');
+      expect(mapDioException(response(404)).message, 'HTTP 404');
+    });
+
+    test('a body that cannot be decoded is an invalid response', () {
+      final error = mapDioException(
+        DioException(
+          requestOptions: RequestOptions(path: '/x'),
+          error: const FormatException('Unexpected character', '<html>'),
+        ),
+      );
+      expect(
+        error,
+        isA<ProviderException>().having(
+          (e) => e.message,
+          'message',
+          'Invalid response',
+        ),
+      );
+    });
+
+    test('unknown errors never show the request URL', () {
+      final error = mapDioException(
+        DioException(
+          requestOptions: RequestOptions(path: '/x'),
+          error: HttpException(
+            'Connection closed',
+            uri: Uri.parse('https://a.com/api/account/info?key=secret'),
+          ),
+        ),
+      );
+      expect(error, isA<NetworkException>());
+      expect(error.message, isNot(contains('secret')));
+      expect(error.toString(), isNot(contains('secret')));
+    });
+
     test('reads Retry-After on 429', () {
       final error = mapDioException(
         response(
@@ -88,6 +127,97 @@ void main() {
         error: const QuotaExceededException('full'),
       );
       expect(mapDioException(error), isA<QuotaExceededException>());
+    });
+  });
+
+  group('guardRequest', () {
+    DioException badResponse(int status) {
+      final request = RequestOptions(path: '/x');
+      return DioException.badResponse(
+        statusCode: status,
+        requestOptions: request,
+        response: Response<dynamic>(
+          requestOptions: request,
+          statusCode: status,
+          data: {'msg': 'boom'},
+        ),
+      );
+    }
+
+    test('prefers the error built by onBadResponse', () async {
+      await expectLater(
+        guardRequest<void>(
+          () => throw badResponse(500),
+          onBadResponse: (e, _) =>
+              QuotaExceededException('${(e.response!.data as Map)['msg']}'),
+        ),
+        throwsA(
+          isA<QuotaExceededException>().having(
+            (e) => e.message,
+            'message',
+            'boom',
+          ),
+        ),
+      );
+    });
+
+    test('falls back to the HTTP error when onBadResponse has none', () async {
+      await expectLater(
+        guardRequest<void>(
+          () => throw badResponse(404),
+          onBadResponse: (_, _) => null,
+        ),
+        throwsA(isA<NotFoundException>()),
+      );
+    });
+
+    test('only calls onBadResponse for HTTP error responses', () async {
+      var calls = 0;
+      await expectLater(
+        guardRequest<void>(
+          () => throw DioException.connectionTimeout(
+            timeout: Duration.zero,
+            requestOptions: RequestOptions(path: '/x'),
+          ),
+          onBadResponse: (_, _) {
+            calls++;
+            return const QuotaExceededException('full');
+          },
+        ),
+        throwsA(isA<NetworkException>()),
+      );
+      expect(calls, 0);
+    });
+  });
+
+  group('waitBoth', () {
+    test('returns both results', () async {
+      expect(await waitBoth(Future.value(1), Future.value('a')), (1, 'a'));
+    });
+
+    test('throws the original error', () async {
+      await expectLater(
+        waitBoth(
+          Future.value(1),
+          Future<String>.error(const NotFoundException('gone')),
+        ),
+        throwsA(isA<NotFoundException>()),
+      );
+      await expectLater(
+        waitBoth(
+          Future<int>.error(const AuthenticationException('key')),
+          Future<String>.error(const NotFoundException('gone')),
+        ),
+        throwsA(isA<AuthenticationException>()),
+      );
+    });
+  });
+
+  test('compactParams drops nulls and converts values to strings', () {
+    expect(compactParams({'page': 2, 'title': null, 'adult': true, 'q': 'a'}), {
+      'page': '2',
+      'adult': 'true',
+      'q': 'a',
     });
   });
 

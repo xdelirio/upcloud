@@ -1,3 +1,4 @@
+import 'package:upcloud/src/core/cancellation.dart';
 import 'package:upcloud/src/core/capabilities/capabilities.dart';
 import 'package:upcloud/src/core/credentials.dart';
 import 'package:upcloud/src/core/errors.dart';
@@ -15,7 +16,6 @@ import 'package:upcloud/src/core/provider_definition.dart';
 import 'package:upcloud/src/core/provider_limits.dart';
 import 'package:upcloud/src/drivers/xvs/xvs_api.dart';
 import 'package:upcloud/src/drivers/xvs/xvs_config.dart';
-import 'package:upcloud/src/drivers/xvs/xvs_driver.dart';
 import 'package:upcloud/src/drivers/xvs/xvs_dtos.dart';
 import 'package:upcloud/src/drivers/xvs/xvs_mapper.dart';
 
@@ -71,6 +71,9 @@ final class XvsProvider
       limits: limits,
       baseUrl: baseUrl,
       config: config,
+      capabilities: definition.capabilities.difference(
+        config.disabledCapabilities,
+      ),
       fileUrlTemplate: definition.fileUrlTemplate,
       api: XvsApi(dio, () => credentials.apiKey),
       ownsHttpClient: options.dio == null,
@@ -82,6 +85,7 @@ final class XvsProvider
     required this.limits,
     required this.baseUrl,
     required this.config,
+    required this.capabilities,
     required String? fileUrlTemplate,
     required this._api,
     required this._ownsHttpClient,
@@ -99,9 +103,10 @@ final class XvsProvider
   /// Differences of this clone.
   final XvsConfig config;
 
+  /// The capabilities of the definition without the ones disabled in
+  /// [config].
   @override
-  Set<Capability> get capabilities =>
-      xvsCapabilities.difference(config.disabledCapabilities);
+  final Set<Capability> capabilities;
 
   final XvsApi _api;
   final XvsMapper _mapper;
@@ -131,13 +136,15 @@ final class XvsProvider
     PageRequest page = PageRequest.first,
   }) async {
     _ensure(Capability.browseFolders);
-    final folders = page.page == 1
-        ? await _subfolders(folderId)
-        : const <CloudFolder>[];
-    final files = await _files(
-      page: page,
-      folderId: folderId,
-      folderParam: XvsMapper.folderParam(folderId),
+    final (folders, files) = await waitBoth(
+      page.page == 1
+          ? _subfolders(folderId)
+          : Future.value(const <CloudFolder>[]),
+      _files(
+        page: page,
+        folderId: folderId,
+        folderParam: XvsMapper.folderParam(folderId),
+      ),
     );
     return PagedResult(
       items: [...folders, ...files.items],
@@ -327,13 +334,10 @@ final class XvsProvider
   }) async {
     _ensure(Capability.upload);
     final length = file.size;
-    final rejection = limits.check(
+    limits.ensureAccepts(
       extension: file.extension,
       size: length == null ? null : DataSize(length),
     );
-    if (rejection != null) {
-      throw UploadRejectedException(_describe(rejection), reason: rejection);
-    }
     final server = await _uploadServer();
     return UploadRequest(
       url: server,
@@ -362,8 +366,9 @@ final class XvsProvider
   @override
   Future<CloudFile> completeUpload(
     UploadRequest request,
-    UploadResponse response,
-  ) async {
+    UploadResponse response, {
+    CancellationToken? cancelToken,
+  }) async {
     _ensure(Capability.upload);
     final envelope = checkUploadResponse(response);
     final uploaded = _uploadedFile(envelope, response.statusCode);
@@ -451,17 +456,6 @@ final class XvsProvider
     }
     return dto;
   }
-
-  String _describe(UploadRejection rejection) => switch (rejection) {
-    FileTooLarge(:final size, :final maxSize) =>
-      'The file is too large for ${info.name} ($size, max $maxSize)',
-    ExtensionNotAllowed(:final extension) =>
-      extension.isEmpty
-          ? '${info.name} does not accept files without extension'
-          : '${info.name} does not accept ".$extension" files',
-    NotEnoughStorage(:final size, :final available) =>
-      'Not enough storage in ${info.name} ($size needed, $available free)',
-  };
 
   @override
   Future<RemoteUploadJob> uploadFromUrl(

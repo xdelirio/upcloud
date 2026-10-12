@@ -189,18 +189,19 @@ bd.TaskNotificationConfig? notificationConfigFor(
 final _notificationSetup = _NotificationSetup();
 
 Duration? _appliedResponseTimeout;
+late Future<void> _responseTimeoutSetup;
 
 /// Sets background_downloader's global request timeout once per value.
-Future<void> _applyResponseTimeout(Duration timeout) async {
-  if (_appliedResponseTimeout == timeout) return;
-  _appliedResponseTimeout = timeout;
-  try {
-    await bd.FileDownloader().configure(
-      globalConfig: (bd.Config.requestTimeout, timeout),
-    );
-  } on Object {
-    // The package default (60 s) keeps working.
+/// Uploads that start meanwhile wait for the same call.
+Future<void> _applyResponseTimeout(Duration timeout) {
+  if (_appliedResponseTimeout != timeout) {
+    _appliedResponseTimeout = timeout;
+    _responseTimeoutSetup = bd.FileDownloader()
+        .configure(globalConfig: (bd.Config.requestTimeout, timeout))
+        // The package default (60 s) keeps working.
+        .then<void>((_) {}, onError: (Object _) {});
   }
+  return _responseTimeoutSetup;
 }
 
 /// Applies the notification settings to background_downloader, and asks
@@ -208,6 +209,7 @@ Future<void> _applyResponseTimeout(Duration timeout) async {
 final class _NotificationSetup {
   final _applied = <String, UploadNotifications>{};
   (bool, String)? _platformKey;
+  Future<void>? _platformSetup;
   Future<bool>? _permissionRequest;
 
   /// The group and priority of a task sent with [notifications].
@@ -236,15 +238,16 @@ final class _NotificationSetup {
     if (platformKey != _platformKey) {
       _platformKey = platformKey;
       final platformConfig = platformConfigFor(notifications);
-      try {
-        await downloader.configure(
-          androidConfig: platformConfig.android,
-          iOSConfig: platformConfig.ios,
-        );
-      } on Object {
-        // Uploads work without it.
-      }
+      _platformSetup = downloader
+          .configure(
+            androidConfig: platformConfig.android,
+            iOSConfig: platformConfig.ios,
+          )
+          // Uploads work without it.
+          .then<void>((_) {}, onError: (Object _) {});
     }
+    // Uploads that start meanwhile wait for the same call.
+    await _platformSetup;
     final allowed = notifications.enabled && await _allowed(notifications);
     return (
       group: taskGroup,

@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:upcloud/src/app/file_io.dart';
 import 'package:upcloud/src/app/glass_chrome.dart';
 import 'package:upcloud/src/app/page_scaffold.dart';
-import 'package:upcloud/src/app/strings.dart';
+import 'package:upcloud/src/widgets/common/message_view.dart';
 import 'package:upcloud/ui.dart';
 
 /// Browses the selected account with [CloudBrowser].
 ///
-/// The page owns the [CloudBrowserController] to show how apps can drive
-/// the browser: the floating upload button sends files to the open folder.
+/// The page owns the [CloudBrowserController]: the floating upload button
+/// sends files to the open folder.
 class BrowserPage extends StatefulWidget {
   const BrowserPage({
     required this.accounts,
@@ -71,33 +71,38 @@ class _BrowserPageState extends State<BrowserPage> {
     super.dispose();
   }
 
-  void _snack(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
-  }
-
   Future<void> _upload(CloudBrowserController controller) async {
     final sources = await pickUploadSources();
     if (sources.isEmpty || !mounted) return;
     controller.upload(sources);
-    _snack(UpCloudLocalizations.of(context).uploadsQueued(sources.length));
+    showUpCloudSnackBar(
+      context,
+      UpCloudLocalizations.of(context).uploadsQueued(sources.length),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final strings = ExampleStrings.of(context);
+    final l10n = UpCloudLocalizations.of(context);
     final controller = _controller;
     return PageScaffold(
       title: widget.accounts.isEmpty
-          ? Text(strings.files)
+          ? Text(l10n.files)
           : _AccountSelector(
               accounts: widget.accounts,
               selectedId: widget.accountId,
               onChanged: widget.onAccountChanged,
             ),
       body: controller == null
-          ? _NoAccount(onAddAccount: widget.onAddAccount)
+          ? MessageView(
+              icon: Icons.cloud_off_rounded,
+              title: l10n.noAccountTitle,
+              message: l10n.noAccountMessage,
+              action: FilledButton.tonal(
+                onPressed: widget.onAddAccount,
+                child: Text(l10n.goToAccounts),
+              ),
+            )
           : CloudBrowser(
               key: ValueKey(controller),
               controller: controller,
@@ -113,7 +118,7 @@ class _BrowserPageState extends State<BrowserPage> {
           ? null
           : GlassActionButton(
               icon: Icons.upload_rounded,
-              label: strings.upload,
+              label: l10n.upload,
               onPressed: () => unawaited(_upload(controller)),
             ),
     );
@@ -137,14 +142,13 @@ class _AccountSelector extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     ProviderInfo infoOf(CloudAccount account) =>
-        upcloud.provider(account.providerId)?.info ??
-        ProviderInfo(id: account.providerId, name: account.providerId);
+        upcloud.providerInfo(account.providerId);
     final selected =
         accounts.where((a) => a.id == selectedId).firstOrNull ?? accounts.first;
     return Align(
       alignment: AlignmentDirectional.centerStart,
       child: PopupMenuButton<String>(
-        tooltip: ExampleStrings.of(context).account,
+        tooltip: UpCloudLocalizations.of(context).account,
         position: PopupMenuPosition.under,
         onSelected: onChanged,
         itemBuilder: (context) => [
@@ -182,66 +186,6 @@ class _AccountSelector extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               Icon(Icons.expand_more_rounded, color: scheme.onSurfaceVariant),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NoAccount extends StatelessWidget {
-  const _NoAccount({required this.onAddAccount});
-
-  final VoidCallback onAddAccount;
-
-  @override
-  Widget build(BuildContext context) {
-    final strings = ExampleStrings.of(context);
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    // Same look as the empty states of the package widgets.
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: scheme.secondaryContainer.withValues(alpha: 0.7),
-                  shape: BoxShape.circle,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Icon(
-                    Icons.cloud_off_rounded,
-                    size: 40,
-                    color: scheme.onSecondaryContainer,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                strings.noAccountTitle,
-                style: theme.textTheme.titleMedium,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                strings.noAccountMessage,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 24),
-              FilledButton.tonal(
-                onPressed: onAddAccount,
-                child: Text(strings.goToAccounts),
-              ),
             ],
           ),
         ),

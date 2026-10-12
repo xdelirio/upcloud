@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:upcloud/testing.dart';
 import 'package:upcloud/ui.dart';
 
+import '../support/testing.dart';
 import 'helpers.dart';
 
 void main() {
@@ -44,7 +44,11 @@ void main() {
       );
       addTearDown(manager.dispose);
       var now = DateTime(2026);
-      final controller = TransfersController(manager, clock: () => now);
+      final controller = TransfersController(
+        manager,
+        progressInterval: Duration.zero,
+        clock: () => now,
+      );
       addTearDown(controller.dispose);
 
       final running = <double?>[];

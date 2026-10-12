@@ -7,9 +7,9 @@ import 'package:upcloud/src/app/ambient_background.dart';
 import 'package:upcloud/src/app/browser_page.dart';
 import 'package:upcloud/src/app/glass_chrome.dart';
 import 'package:upcloud/src/app/providers_page.dart';
-import 'package:upcloud/src/app/strings.dart';
 import 'package:upcloud/src/app/transfers_page.dart';
 import 'package:upcloud/src/app/upload_page.dart';
+import 'package:upcloud/src/widgets/common/message_view.dart';
 import 'package:upcloud/ui.dart';
 
 /// Responsive shell: a floating glass tab bar on phones and a glass side
@@ -42,19 +42,9 @@ class _HomePageState extends State<HomePage> {
   /// the tab bar and the rail.
   final GlobalKey _pagesKey = GlobalKey();
 
-  int _tab = _accountsTab;
+  /// Starts on the files tab when there is something to browse.
+  late int _tab = _upcloud.accounts.isEmpty ? _accountsTab : _filesTab;
   String? _accountId;
-
-  @override
-  void initState() {
-    super.initState();
-    // Start on the files tab when there is something to browse.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _upcloud.accounts.isNotEmpty) {
-        setState(() => _tab = _filesTab);
-      }
-    });
-  }
 
   void _syncActiveUploads() =>
       _activeUploads.value = _transfers.state.activeCount;
@@ -80,46 +70,41 @@ class _HomePageState extends State<HomePage> {
   /// Shows the progress of a batch started from the upload tab.
   void _onBatchStarted(UploadBatch batch) {
     setState(() => _tab = _transfersTab);
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            UpCloudLocalizations.of(context).uploadsQueued(batch.tasks.length),
-          ),
-        ),
-      );
+    showUpCloudSnackBar(
+      context,
+      UpCloudLocalizations.of(context).uploadsQueued(batch.tasks.length),
+    );
   }
 
   List<AppDestination> _destinations(
-    ExampleStrings strings, {
+    UpCloudLocalizations l10n, {
     required bool compact,
   }) => [
     AppDestination(
       icon: Icons.account_circle_outlined,
       selectedIcon: Icons.account_circle,
-      label: strings.accounts,
+      label: l10n.accounts,
     ),
     AppDestination(
       icon: Icons.folder_outlined,
       selectedIcon: Icons.folder_rounded,
-      label: strings.files,
+      label: l10n.files,
     ),
     AppDestination(
       icon: Icons.cloud_upload_outlined,
       selectedIcon: Icons.cloud_upload_rounded,
-      label: strings.upload,
+      label: l10n.upload,
     ),
     AppDestination(
       icon: Icons.swap_vert_rounded,
       selectedIcon: Icons.swap_vert_circle_rounded,
-      label: compact ? strings.transfersTab : strings.transfers,
+      label: compact ? l10n.transfersTab : l10n.transfers,
       badgeCount: _activeUploads,
     ),
     AppDestination(
       icon: Icons.hub_outlined,
       selectedIcon: Icons.hub_rounded,
-      label: strings.providers,
+      label: l10n.providers,
     ),
   ];
 
@@ -160,12 +145,12 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final strings = ExampleStrings.of(context);
+    final l10n = UpCloudLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final pages = _buildPages();
     final width = MediaQuery.sizeOf(context).width;
     final destinations = _destinations(
-      strings,
+      l10n,
       compact: width < Breakpoints.medium,
     );
 
@@ -183,7 +168,7 @@ class _HomePageState extends State<HomePage> {
                 16 + padding.bottom,
               ),
               child: GlassSidebar(
-                title: strings.appTitle,
+                title: l10n.appTitle,
                 destinations: destinations,
                 selectedIndex: _tab,
                 onSelected: _select,

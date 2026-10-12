@@ -6,9 +6,8 @@ import 'package:upcloud/ui.dart';
 /// Saves the accounts as a JSON list in shared preferences.
 ///
 /// IMPORTANT: accounts contain API keys and passwords, and shared
-/// preferences are stored in plain text. This keeps the example simple;
-/// production apps should keep credentials in secure storage (Keychain,
-/// Android Keystore...), e.g. with `flutter_secure_storage`.
+/// preferences are stored in plain text, in the private storage of the
+/// app. Android backups are turned off in the manifest for this reason.
 class SharedPreferencesAccountStore implements AccountStore {
   SharedPreferencesAccountStore({
     SharedPreferencesAsync? preferences,
@@ -30,9 +29,10 @@ class SharedPreferencesAccountStore implements AccountStore {
         for (final item in list)
           CloudAccount.fromJson((item as Map).cast<String, dynamic>()),
       ];
-    } on Object {
-      // Corrupted or saved by an incompatible version: start again.
-      return const [];
+    } on Object catch (error) {
+      // Fails the start instead of returning nothing: the next save would
+      // overwrite every saved account.
+      throw FormatException('Saved accounts cannot be read: $error');
     }
   }
 

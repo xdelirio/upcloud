@@ -18,16 +18,12 @@ Future<CloudBreadcrumb?> showCloudFolderPicker(
   required CloudProvider provider,
   List<CloudBreadcrumb>? initialPath,
   Set<FolderId> excluded = const {},
-  String? title,
-  String? confirmLabel,
 }) => showDialog<CloudBreadcrumb>(
   context: context,
   builder: (context) => _FolderPickerDialog(
     provider: provider,
     initialPath: initialPath,
     excluded: excluded,
-    title: title,
-    confirmLabel: confirmLabel,
   ),
 );
 
@@ -36,15 +32,11 @@ class _FolderPickerDialog extends StatefulWidget {
     required this.provider,
     required this.initialPath,
     required this.excluded,
-    required this.title,
-    required this.confirmLabel,
   });
 
   final CloudProvider provider;
   final List<CloudBreadcrumb>? initialPath;
   final Set<FolderId> excluded;
-  final String? title;
-  final String? confirmLabel;
 
   @override
   State<_FolderPickerDialog> createState() => _FolderPickerDialogState();
@@ -76,7 +68,7 @@ class _FolderPickerDialogState extends State<_FolderPickerDialog> {
               folder,
         ];
         return AlertDialog(
-          title: Text(widget.title ?? l10n.moveTo),
+          title: Text(l10n.moveTo),
           contentPadding: const EdgeInsets.symmetric(vertical: 12),
           content: SizedBox(
             width: 420,
@@ -108,7 +100,7 @@ class _FolderPickerDialogState extends State<_FolderPickerDialog> {
               onPressed: state.error == null
                   ? () => Navigator.of(context).pop(state.current)
                   : null,
-              child: Text(widget.confirmLabel ?? l10n.moveHere),
+              child: Text(l10n.moveHere),
             ),
           ],
         );
@@ -143,10 +135,26 @@ class _FolderPickerDialogState extends State<_FolderPickerDialog> {
       return const Center(child: CircularProgressIndicator());
     }
     return ListView.builder(
-      itemCount: folders.length + (state.canLoadMorePage ? 1 : 0),
+      itemCount: folders.length + (state.hasMore ? 1 : 0),
       itemBuilder: (context, index) {
         if (index >= folders.length) {
-          if (!state.isLoadingMore && state.loadMoreError == null) {
+          if (state.loadMoreError != null) {
+            return Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Flexible(child: Text(l10n.loadMoreFailed)),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () => unawaited(_controller.loadMore()),
+                    child: Text(l10n.retry),
+                  ),
+                ],
+              ),
+            );
+          }
+          if (!state.isLoadingMore) {
             scheduleMicrotask(() => unawaited(_controller.loadMore()));
           }
           return const Padding(
@@ -162,8 +170,4 @@ class _FolderPickerDialogState extends State<_FolderPickerDialog> {
       },
     );
   }
-}
-
-extension on CloudBrowserState {
-  bool get canLoadMorePage => hasMore && loadMoreError == null;
 }

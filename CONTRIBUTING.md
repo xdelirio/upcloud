@@ -52,11 +52,15 @@ A driver is needed when an API differs from the existing ones.
 1. Create `lib/src/drivers/<name>/`.
 2. Implement a `CloudProvider` with the capability interfaces the API
    supports (`FolderBrowsing`, `FileUploading`...). Use `createDio`,
-   `guardRequest` and the lenient readers in `core/http`. Mark read-only
-   requests as retryable with `retryableExtraKey`; never retry writes.
+   `guardRequest` (its `onBadResponse` reads the API error of the body;
+   leave HTTP 429 to it so `Retry-After` is kept), `compactParams` and
+   the lenient readers in `core/http`. Mark read-only requests as
+   retryable with `retryableExtraKey`; never retry writes. `capabilities`
+   returns `definition.capabilities`, so a registry entry can disable
+   some of them.
 3. Uploads never send bytes from the driver: an `UploadExecutor` does
    (`BackgroundUploadExecutor` in the app).
-   - `prepareUpload(file, options:)` checks `limits`, calls the API if
+   - `prepareUpload(file, options:)` calls `limits.ensureAccepts`, the API if
      needed (upload server, session token...) and returns an
      `UploadRequest`: the URL, `multipart` fields (the executor adds the
      file part last, named `fileField`) or a `binary` body with its
@@ -67,7 +71,8 @@ A driver is needed when an API differs from the existing ones.
      `uploadResponseException`) and returns the `CloudFile`. Errors found
      after the server accepted the file should carry the HTTP status of
      the response (`ProviderException.statusCode`) so `TransferManager`
-     does not upload the file again.
+     does not upload the file again; the same goes for API calls made
+     here once the file is accepted (make them best effort).
 4. Extend `CloudDriver` (`id`, `capabilities`, `defaultLimits`,
    `defaultCredentials`, `defaultFileUrlTemplate`, `settings`, `create`).
    Files get the link returned by the API in `CloudFile.pageUrl`, or

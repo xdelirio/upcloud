@@ -8,7 +8,7 @@ import 'package:upcloud/src/core/models/upload_request.dart';
 /// and read its response (`FileUploading.completeUpload`); an executor
 /// sends it. The app uses `BackgroundUploadExecutor` (background
 /// uploads); tests use `FakeUploadExecutor` from
-/// `package:upcloud/testing.dart`.
+/// `test/support`.
 ///
 /// Implementations must:
 ///

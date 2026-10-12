@@ -54,7 +54,7 @@ final class BackupImportResult {
   final int providersImported;
 
   /// Provider entries that could not be imported (e.g. their driver needs
-  /// a newer version of the package).
+  /// a newer version of the app).
   final int providersSkipped;
 
   /// Whether the upload settings of the backup were applied.

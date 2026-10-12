@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -11,22 +13,38 @@ import 'package:upcloud/ui.dart';
 /// Expects an [UpCloudScope] above it. Glass chrome comes from
 /// `liquid_glass_widgets`; `main` wraps the app with
 /// `LiquidGlassWidgets.wrap`.
-class ExampleApp extends StatefulWidget {
-  const ExampleApp({this.uploadExecutor, super.key});
+class UpCloudApp extends StatefulWidget {
+  const UpCloudApp({
+    this.uploadExecutor,
+    this.settings = const AppSettings(),
+    this.settingsStore,
+    super.key,
+  });
 
   /// Executor whose notification texts follow the app language.
   final BackgroundUploadExecutor? uploadExecutor;
 
+  /// Theme and language the app starts with.
+  final AppSettings settings;
+
+  /// Where changes of the theme and language are saved, if anywhere.
+  final KeyValueStore? settingsStore;
+
   @override
-  State<ExampleApp> createState() => _ExampleAppState();
+  State<UpCloudApp> createState() => _UpCloudAppState();
 }
 
-class _ExampleAppState extends State<ExampleApp> {
-  final ValueNotifier<AppSettings> _settings = ValueNotifier(
-    const AppSettings(),
-  );
+class _UpCloudAppState extends State<UpCloudApp> {
+  late final ValueNotifier<AppSettings> _settings = ValueNotifier(
+    widget.settings,
+  )..addListener(_save);
 
   static const _seed = Color(0xFF3D6DCC);
+
+  void _save() {
+    final store = widget.settingsStore;
+    if (store != null) unawaited(_settings.value.save(store));
+  }
 
   @override
   void dispose() {
@@ -41,7 +59,8 @@ class _ExampleAppState extends State<ExampleApp> {
       child: ValueListenableBuilder(
         valueListenable: _settings,
         builder: (context, settings, _) => MaterialApp(
-          title: 'UpCloud Files',
+          onGenerateTitle: (context) =>
+              UpCloudLocalizations.of(context).appTitle,
           debugShowCheckedModeBanner: false,
           theme: buildTheme(Brightness.light),
           darkTheme: buildTheme(Brightness.dark),
@@ -59,7 +78,10 @@ class _ExampleAppState extends State<ExampleApp> {
           builder: (context, child) {
             Widget app = Material(
               type: MaterialType.transparency,
-              child: AmbientMotion(child: child!),
+              child: AmbientMotion(
+                enabled: settings.animatedBackground,
+                child: child!,
+              ),
             );
             final uploads = widget.uploadExecutor;
             if (uploads != null) {
@@ -79,7 +101,7 @@ class _ExampleAppState extends State<ExampleApp> {
 /// a tighter type scale and rounder components.
 ThemeData buildTheme(Brightness brightness) {
   final scheme = ColorScheme.fromSeed(
-    seedColor: _ExampleAppState._seed,
+    seedColor: _UpCloudAppState._seed,
     brightness: brightness,
     // Keeps the brand blue vivid instead of the muted tonal default.
     dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
@@ -225,7 +247,7 @@ ThemeData buildTheme(Brightness brightness) {
       side: BorderSide(color: scheme.outlineVariant),
       shape: const StadiumBorder(),
     ),
-    // Shows how to customize the package widgets.
+    // Look of the shared widgets (browser, transfers...).
     extensions: [
       UpCloudTheme.fromColorScheme(scheme).copyWith(
         folderColor: dark ? const Color(0xFFFFC94D) : const Color(0xFFE9A100),

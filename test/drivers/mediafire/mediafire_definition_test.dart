@@ -54,6 +54,29 @@ void main() {
       provider.close();
     });
 
+    test('the provider leaves out the capabilities the entry disables', () {
+      final definition = mediaFireDriver.definitionFor(
+        const ProviderConfig(
+          id: 'mediafire-lite',
+          name: 'MediaFire Lite',
+          driver: MediaFireDriver.driverId,
+          disabledCapabilities: ['remoteUpload', 'deleteFile'],
+        ),
+      );
+      final mf = MediaFireHarness();
+      final provider = definition.create(
+        MediaFireHarness.credentials,
+        options: ProviderOptions(dio: mf.dio),
+      );
+
+      expect(provider.capabilities, definition.capabilities);
+      expect(provider.supports(Capability.remoteUpload), isFalse);
+      expect(provider.supports(Capability.deleteFile), isFalse);
+      expect(provider.supports(Capability.upload), isTrue);
+      // Created from code, without a registry entry.
+      expect(mf.provider().capabilities, mediaFireCapabilities);
+    });
+
     test('options override the limits and the base URL', () async {
       final mf = MediaFireHarness()..login();
       final provider = mediaFire.create(

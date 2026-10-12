@@ -79,6 +79,7 @@ final class MediaFireDriver extends CloudDriver {
     options: options,
     info: definition.info,
     limits: definition.limitsFor(options),
+    capabilities: definition.capabilities,
     baseUrl: definition.baseUrlFor(options),
     fileUrlTemplate: definition.fileUrlTemplate,
   );

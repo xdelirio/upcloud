@@ -1,3 +1,4 @@
+import 'package:upcloud/src/core/cancellation.dart';
 import 'package:upcloud/src/core/capabilities/capabilities.dart';
 import 'package:upcloud/src/core/credentials.dart';
 import 'package:upcloud/src/core/errors.dart';
@@ -61,6 +62,7 @@ final class ByseProvider
     return ByseProvider._(
       info: def.info,
       limits: limits,
+      capabilities: def.capabilities,
       fileUrlTemplate: switch (def.fileUrlTemplate?.trim()) {
         final template? when template.isNotEmpty => template,
         _ => byseFileUrlTemplate(def.info.website),
@@ -73,6 +75,7 @@ final class ByseProvider
   ByseProvider._({
     required this.info,
     required this.limits,
+    required this.capabilities,
     required this._fileUrlTemplate,
     required this._api,
     required this._ownsDio,
@@ -89,9 +92,10 @@ final class ByseProvider
   final String _fileUrlTemplate;
 
   /// Byse can create folders but not rename, move or delete them, and can
-  /// move files but not rename or delete them.
+  /// move files but not rename or delete them. The registry entry may
+  /// disable more operations.
   @override
-  Set<Capability> get capabilities => byseCapabilities;
+  final Set<Capability> capabilities;
 
   final ByseApi _api;
   final bool _ownsDio;
@@ -109,7 +113,7 @@ final class ByseProvider
   /// [ProviderOptions.dio].
   @override
   void close() {
-    if (_ownsDio) _api.dio.close();
+    if (_ownsDio) _api.dio.close(force: true);
   }
 
   // --- Account -------------------------------------------------------------
@@ -133,12 +137,11 @@ final class ByseProvider
     FolderId? folderId, {
     PageRequest page = PageRequest.first,
   }) async {
-    final folders = page.page <= 1
-        ? await _subfolders(folderId)
-        : const <CloudFolder>[];
-    final files = await _fileList(
-      folderId: byseFolderParam(folderId),
-      page: page,
+    final (folders, files) = await waitBoth(
+      page.page <= 1
+          ? _subfolders(folderId)
+          : Future.value(const <CloudFolder>[]),
+      _fileList(folderId: byseFolderParam(folderId), page: page),
     );
     final totalFiles = files.totalItems;
     return PagedResult<CloudEntry>(
@@ -287,16 +290,10 @@ final class ByseProvider
     UploadOptions options = const UploadOptions(),
   }) async {
     final length = file.size;
-    final rejection = limits.check(
+    limits.ensureAccepts(
       extension: file.extension,
       size: length == null ? null : DataSize(length),
     );
-    if (rejection != null) {
-      throw UploadRejectedException(
-        _rejectionMessage(file.name, rejection),
-        reason: rejection,
-      );
-    }
     final server = await _uploadServer();
     return UploadRequest(
       url: server,
@@ -325,8 +322,9 @@ final class ByseProvider
   @override
   Future<CloudFile> completeUpload(
     UploadRequest request,
-    UploadResponse response,
-  ) async {
+    UploadResponse response, {
+    CancellationToken? cancelToken,
+  }) async {
     final uploaded = _uploadedFile(
       parseByseUploadResponse(response),
       response.statusCode,
@@ -442,15 +440,21 @@ final class ByseProvider
   /// for them. Jobs Byse no longer knows are dropped.
   @override
   Future<List<RemoteUploadJob>> remoteUploads() async {
-    final jobs = <RemoteUploadJob>[];
-    for (final id in _remoteJobs.toList()) {
-      try {
-        jobs.add(await remoteUploadStatus(id));
-      } on NotFoundException {
-        _remoteJobs.remove(id);
-      }
+    final jobs = await Future.wait([
+      for (final id in _remoteJobs.toList()) _knownRemoteUpload(id),
+    ]);
+    return jobs.nonNulls.toList();
+  }
+
+  /// Status of the remote upload [id], or `null` (and it is forgotten)
+  /// when Byse no longer knows it.
+  Future<RemoteUploadJob?> _knownRemoteUpload(String id) async {
+    try {
+      return await remoteUploadStatus(id);
+    } on NotFoundException {
+      _remoteJobs.remove(id);
+      return null;
     }
-    return jobs;
   }
 
   @override
@@ -473,15 +477,3 @@ List<Map<String, Object?>> _resultList(Map<String, Object?> json) {
   final items = result is List ? result : [result];
   return [for (final item in items) ?readMap(item)];
 }
-
-String _rejectionMessage(String name, UploadRejection reason) =>
-    switch (reason) {
-      FileTooLarge(:final size, :final maxSize) =>
-        '"$name" is $size, Byse accepts files up to $maxSize',
-      ExtensionNotAllowed(:final extension, :final allowed) =>
-        '"$name": Byse does not accept '
-            '${extension.isEmpty ? 'files without extension' : '.$extension'}'
-            ' (allowed: ${(allowed.toList()..sort()).join(', ')})',
-      NotEnoughStorage(:final size, :final available) =>
-        '"$name" is $size but only $available are left',
-    };

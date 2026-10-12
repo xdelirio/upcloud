@@ -312,6 +312,7 @@ final class InMemoryProviderForTest implements FileUploading {
   @override
   Future<CloudFile> completeUpload(
     UploadRequest request,
-    UploadResponse response,
-  ) => throw UnimplementedError();
+    UploadResponse response, {
+    CancellationToken? cancelToken,
+  }) => throw UnimplementedError();
 }

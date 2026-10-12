@@ -178,9 +178,6 @@ abstract class UpCloudLocalizations {
   /// Feedback after copying a link.
   String get linkCopied;
 
-  /// Message shown when a file has no links.
-  String get noLinks;
-
   /// Label of the move action.
   String get move;
 
@@ -226,9 +223,6 @@ abstract class UpCloudLocalizations {
 
   /// Status of cancelled transfers.
   String get transferCancelled;
-
-  /// Status of failed transfers.
-  String get transferFailed;
 
   /// Progress of a transfer, e.g. `12 MB of 48 MB`.
   String transferProgress(String transferred, String total);
@@ -549,26 +543,11 @@ abstract class UpCloudLocalizations {
   /// Label of password fields.
   String get password;
 
-  /// Title of the provider picker.
-  String get chooseProvider;
-
   /// Message shown when no provider is registered.
   String get noProviders;
 
   /// Label of the provider dropdown of the account form.
   String get provider;
-
-  /// Maximum upload size of a provider.
-  String maxFileSize(String size);
-
-  /// Short label of [capability].
-  String capability(Capability capability);
-
-  /// Label of the chip grouping folder management operations.
-  String get manageFoldersCapability;
-
-  /// Label of the chip grouping file management operations.
-  String get manageFilesCapability;
 
   /// Translated description of a provider config [problem].
   String configProblem(ConfigProblem problem);
@@ -712,6 +691,21 @@ abstract class UpCloudLocalizations {
   /// Message of registry entries whose driver is not available.
   String unknownDriver(String id);
 
+  /// Message of registry entries that cannot be read.
+  String get invalidRegistryEntry;
+
+  /// Message of registry entries that repeat the id of another one.
+  String get duplicatedProviderId;
+
+  /// Why the registry entry of [issue] cannot be used.
+  String registryIssue(RegistryIssue issue) => switch (issue.kind) {
+    RegistryIssueKind.invalidEntry => invalidRegistryEntry,
+    RegistryIssueKind.duplicatedId => duplicatedProviderId,
+    RegistryIssueKind.unknownDriver => unknownDriver(issue.detail ?? '?'),
+    RegistryIssueKind.invalidConfig =>
+      issue.problems.map(configProblem).join(' '),
+  };
+
   // ---------------------------------------------------------------------------
   // Backups
   // ---------------------------------------------------------------------------
@@ -852,6 +846,18 @@ abstract class UpCloudLocalizations {
   /// Human readable [bytes].
   String formatBytes(int bytes) => formatSize(DataSize(bytes < 0 ? 0 : bytes));
 
+  /// [fraction] (between 0 and 1) as a percentage, e.g. `42 %`.
+  ///
+  /// Rounds down, so `100 %` is only shown when done; set [round] to round
+  /// to the nearest integer instead.
+  String formatPercent(double fraction, {bool round = false}) {
+    final percent = fraction * 100;
+    return '${round ? percent.round() : percent.floor()} %';
+  }
+
+  /// [label] marked as optional, e.g. `Website (Optional)`.
+  String optionalLabel(String label) => '$label ($optional)';
+
   /// Transfer speed, e.g. `1.5 MB/s`.
   String formatSpeed(double bytesPerSecond) =>
       '${formatBytes(bytesPerSecond.round())}/s';
@@ -898,6 +904,85 @@ abstract class UpCloudLocalizations {
     ),
     _ => '$error',
   };
+
+  // ---------------------------------------------------------------------------
+  // App screens
+  // ---------------------------------------------------------------------------
+
+  /// Name of the app.
+  String get appTitle;
+
+  /// Title shown when the saved data cannot be loaded at startup.
+  String get startupFailed;
+
+  /// Label of the files destination.
+  String get files;
+
+  /// Label of the transfers destination.
+  String get transfers;
+
+  /// Short label of the transfers destination in the tab bar of phones.
+  String get transfersTab;
+
+  /// Title of the page that adds an account.
+  String get connectTitle;
+
+  /// Explanation of the page that adds an account.
+  String get connectMessage;
+
+  /// Title shown in the files destination without accounts.
+  String get noAccountTitle;
+
+  /// Explanation shown in the files destination without accounts.
+  String get noAccountMessage;
+
+  /// Label of the action that opens the accounts destination.
+  String get goToAccounts;
+
+  /// Tooltip of the account switcher.
+  String get account;
+
+  /// Title of the settings page.
+  String get settings;
+
+  /// Label of the theme setting.
+  String get theme;
+
+  /// Label of the language setting.
+  String get language;
+
+  /// Option that follows the system theme or language.
+  String get system;
+
+  /// Label of the light theme.
+  String get light;
+
+  /// Label of the dark theme.
+  String get dark;
+
+  /// Label of the setting that makes the backdrop drift.
+  String get animatedBackground;
+
+  /// Explanation of [animatedBackground].
+  String get animatedBackgroundHint;
+
+  /// Title of the upload settings section.
+  String get uploadsSection;
+
+  /// Explanation of the upload settings section.
+  String get uploadsSectionHint;
+
+  /// Title of the app settings section.
+  String get appSection;
+
+  /// Explanation of the app settings section.
+  String get appSectionHint;
+
+  /// Title of the encrypted backup file card.
+  String get backupFile;
+
+  /// Explanation of the backup section.
+  String get backupSectionHint;
 }
 
 UpCloudLocalizations _fallback(Locale? locale) =>

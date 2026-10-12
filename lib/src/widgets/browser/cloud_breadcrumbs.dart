@@ -7,13 +7,7 @@ import 'package:upcloud/src/l10n/upcloud_localizations.dart';
 /// Tapping a folder other than the last calls [onSelected].
 class CloudBreadcrumbs extends StatelessWidget {
   /// Creates breadcrumbs for [path] (root first).
-  const CloudBreadcrumbs({
-    required this.path,
-    this.onSelected,
-    this.rootLabel,
-    this.textStyle,
-    super.key,
-  });
+  const CloudBreadcrumbs({required this.path, this.onSelected, super.key});
 
   /// Folders from the root to the current folder.
   final List<CloudBreadcrumb> path;
@@ -21,23 +15,17 @@ class CloudBreadcrumbs extends StatelessWidget {
   /// Called with the tapped breadcrumb.
   final ValueChanged<CloudBreadcrumb>? onSelected;
 
-  /// Label of the root folder. Defaults to the localized "My files".
-  final String? rootLabel;
-
-  /// Style of the labels.
-  final TextStyle? textStyle;
-
   @override
   Widget build(BuildContext context) {
     final l10n = UpCloudLocalizations.of(context);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final style = textStyle ?? theme.textTheme.titleSmall;
+    final style = theme.textTheme.titleSmall;
     final children = <Widget>[];
     for (var i = 0; i < path.length; i++) {
       final crumb = path[i];
       final isLast = i == path.length - 1;
-      final label = crumb.isRoot ? rootLabel ?? l10n.rootFolder : crumb.name;
+      final label = crumb.isRoot ? l10n.rootFolder : crumb.name;
       if (i > 0) {
         children.add(
           Icon(

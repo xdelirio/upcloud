@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:upcloud/testing.dart';
 import 'package:upcloud/upcloud.dart';
 
+import '../support/testing.dart';
 import '../support/wait.dart';
 
 void main() {

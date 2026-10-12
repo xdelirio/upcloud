@@ -140,9 +140,6 @@ class UpCloudLocalizationsEs extends UpCloudLocalizations {
   String get linkCopied => 'Enlace copiado';
 
   @override
-  String get noLinks => 'No hay enlaces disponibles';
-
-  @override
   String get move => 'Mover';
 
   @override
@@ -184,9 +181,6 @@ class UpCloudLocalizationsEs extends UpCloudLocalizations {
 
   @override
   String get transferCancelled => 'Cancelada';
-
-  @override
-  String get transferFailed => 'Fallida';
 
   @override
   String transferProgress(String transferred, String total) =>
@@ -322,39 +316,10 @@ class UpCloudLocalizationsEs extends UpCloudLocalizations {
   String get password => 'Contraseña';
 
   @override
-  String get chooseProvider => 'Elige un proveedor';
-
-  @override
   String get noProviders => 'No hay proveedores disponibles';
 
   @override
   String get provider => 'Proveedor';
-
-  @override
-  String maxFileSize(String size) => 'Tamaño máx. de archivo: $size';
-
-  @override
-  String capability(Capability capability) => switch (capability) {
-    Capability.browseFolders => 'Explorar',
-    Capability.createFolder => 'Crear carpetas',
-    Capability.renameFolder => 'Renombrar carpetas',
-    Capability.moveFolder => 'Mover carpetas',
-    Capability.deleteFolder => 'Eliminar carpetas',
-    Capability.fileInfo => 'Detalles de archivo',
-    Capability.renameFile => 'Renombrar archivos',
-    Capability.moveFile => 'Mover archivos',
-    Capability.deleteFile => 'Eliminar archivos',
-    Capability.search => 'Búsqueda',
-    Capability.upload => 'Subida',
-    Capability.remoteUpload => 'Subida remota',
-    Capability.accountInfo => 'Info. de cuenta',
-  };
-
-  @override
-  String get manageFoldersCapability => 'Carpetas';
-
-  @override
-  String get manageFilesCapability => 'Gestionar archivos';
 
   @override
   String configProblem(ConfigProblem problem) => switch (problem.code) {
@@ -514,6 +479,12 @@ class UpCloudLocalizationsEs extends UpCloudLocalizations {
 
   @override
   String lastChecked(String date) => 'Última comprobación: $date';
+
+  @override
+  String get invalidRegistryEntry => 'Esta entrada no se puede leer';
+
+  @override
+  String get duplicatedProviderId => 'Otro proveedor usa este id';
 
   @override
   String unknownDriver(String id) => 'Controlador desconocido "$id"';
@@ -886,6 +857,85 @@ class UpCloudLocalizationsEs extends UpCloudLocalizations {
 
   @override
   String get backupUpToDate => 'Todo estaba ya al día';
+
+  @override
+  String get appTitle => 'UpCloud Files';
+
+  @override
+  String get startupFailed => 'No se pudieron cargar tus datos';
+
+  @override
+  String get files => 'Archivos';
+
+  @override
+  String get transfers => 'Transferencias';
+
+  @override
+  String get transfersTab => 'Subidas';
+
+  @override
+  String get connectTitle => 'Conecta una cuenta en la nube';
+
+  @override
+  String get connectMessage =>
+      'Elige un proveedor e introduce las credenciales que pide.';
+
+  @override
+  String get noAccountTitle => 'Conecta una cuenta primero';
+
+  @override
+  String get noAccountMessage =>
+      'Añade una cuenta de alguno de tus proveedores para ver sus archivos.';
+
+  @override
+  String get goToAccounts => 'Ir a cuentas';
+
+  @override
+  String get account => 'Cuenta';
+
+  @override
+  String get settings => 'Ajustes';
+
+  @override
+  String get theme => 'Tema';
+
+  @override
+  String get language => 'Idioma';
+
+  @override
+  String get system => 'Sistema';
+
+  @override
+  String get light => 'Claro';
+
+  @override
+  String get dark => 'Oscuro';
+
+  @override
+  String get animatedBackground => 'Fondo animado';
+
+  @override
+  String get animatedBackgroundHint => 'Desactívalo para ahorrar batería.';
+
+  @override
+  String get uploadsSection => 'Subidas';
+
+  @override
+  String get uploadsSectionHint =>
+      'Se aplican al momento a la cola de subidas.';
+
+  @override
+  String get appSection => 'App';
+
+  @override
+  String get appSectionHint => 'Aspecto e idioma de la app.';
+
+  @override
+  String get backupFile => 'Archivo cifrado';
+
+  @override
+  String get backupSectionHint =>
+      'Lleva tus cuentas, proveedores y ajustes a otro dispositivo.';
 
   String _duration(Duration delay) {
     if (delay.inHours > 0 && delay.inMinutes % 60 == 0) {

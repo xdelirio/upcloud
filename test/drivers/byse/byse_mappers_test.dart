@@ -176,12 +176,5 @@ void main() {
       expect(byseRemoteStatus('???'), RemoteUploadStatus.unknown);
       expect(byseRemoteStatus(null), RemoteUploadStatus.unknown);
     });
-
-    test('read percentages', () {
-      expect(bysePercent('55%'), closeTo(0.55, 1e-9));
-      expect(bysePercent(91), closeTo(0.91, 1e-9));
-      expect(bysePercent('250'), 1);
-      expect(bysePercent(''), isNull);
-    });
   });
 }

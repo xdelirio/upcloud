@@ -5,14 +5,13 @@ import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
 import 'package:cryptography/dart.dart';
 import 'package:upcloud/src/backup/argon2id_params.dart';
-import 'package:upcloud/src/backup/isolate_web.dart'
-    if (dart.library.io) 'package:upcloud/src/backup/isolate_io.dart';
+import 'package:upcloud/src/backup/isolate_io.dart';
 import 'package:upcloud/src/core/errors.dart';
 
 /// Value of the `format` field of backup files.
 const backupFormat = 'upcloud-backup';
 
-/// Newest backup format version this version of the package reads; it is
+/// Newest backup format version this version of the app reads; it is
 /// also the version it writes.
 const supportedBackupVersion = 1;
 
@@ -289,7 +288,7 @@ Future<List<int>> _deriveKey(
   Argon2idParams params,
 ) {
   final bytes = utf8.encode(password);
-  if (canRunIsolated && params.memoryKiB * params.iterations > _inPlaceCost) {
+  if (params.memoryKiB * params.iterations > _inPlaceCost) {
     return runIsolated(() => _argon2id(bytes, salt, params, isolated: true));
   }
   return _argon2id(bytes, salt, params, isolated: false);
@@ -307,7 +306,7 @@ Future<List<int>> _argon2id(
     parallelism: params.parallelism,
     hashLength: _keyLength,
     // No helper isolates: the derivation already runs in its own isolate,
-    // or it is tiny, or there are none (web).
+    // or it is tiny.
     maxIsolates: 0,
     // A worker isolate has nothing else to do; in place, pause regularly
     // so the event loop keeps running.

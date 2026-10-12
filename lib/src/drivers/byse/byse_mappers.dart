@@ -88,7 +88,7 @@ CloudFile? byseFileFromJson(
     views: readInt(read('views')),
     isPublic: readBool(read('public')),
     isReady: readBool(json['canplay']),
-    extra: _extra(json, _fileKeys),
+    extra: readExtra(json, _fileKeys),
   );
 }
 
@@ -110,7 +110,7 @@ CloudFolder? byseFolderFromJson(
     parentId: json.containsKey('parent_id')
         ? byseFolderId(json['parent_id'])
         : parentId,
-    extra: _extra(json, _folderKeys),
+    extra: readExtra(json, _folderKeys),
   );
 }
 
@@ -175,7 +175,7 @@ AccountInfo byseAccountFromJson(Map<String, Object?> json, {DateTime? now}) {
         (premiumUntil?.isAfter(now ?? DateTime.now()) ?? false),
     premiumUntil: premiumUntil,
     balance: readString(json['balance']),
-    extra: _extra(json, _accountKeys),
+    extra: readExtra(json, _accountKeys),
   );
 }
 
@@ -193,9 +193,9 @@ RemoteUploadJob byseRemoteJobFromJson(String id, Map<String, Object?> json) {
     status: byseRemoteStatus(readString(json['status'])),
     fileId: FileId(code),
     sourceUrl: readUri(json['url']),
-    progress: bysePercent(json['progress']),
+    progress: readPercent(json['progress']),
     error: error == null || error.isEmpty ? null : error,
-    extra: _extra(json, _remoteKeys),
+    extra: readExtra(json, _remoteKeys),
   );
 }
 
@@ -216,16 +216,3 @@ RemoteUploadStatus byseRemoteStatus(String? status) =>
       'ERROR' || 'FAILED' || 'FAIL' || 'BROKEN' => RemoteUploadStatus.failed,
       _ => RemoteUploadStatus.unknown,
     };
-
-/// Reads a percentage (`55`, `"55"`, `"55%"`) as a fraction between 0 and 1.
-double? bysePercent(Object? value) {
-  final text = readString(value)?.replaceAll('%', '');
-  final percent = readDouble(text);
-  if (percent == null) return null;
-  return (percent / 100).clamp(0, 1).toDouble();
-}
-
-Map<String, Object?> _extra(Map<String, Object?> json, Set<String> known) => {
-  for (final MapEntry(:key, :value) in json.entries)
-    if (!known.contains(key) && value != null) key: value,
-};

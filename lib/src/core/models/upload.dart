@@ -1,13 +1,12 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:upcloud/src/core/models/file_length_stub.dart'
-    if (dart.library.io) 'package:upcloud/src/core/models/file_length_io.dart';
+import 'package:upcloud/src/core/models/file_length_io.dart';
 import 'package:upcloud/src/core/models/ids.dart';
 
 part 'upload.freezed.dart';
 
 /// The content to upload.
 ///
-/// * [UploadSource.file] reads from a local path (not available on web).
+/// * [UploadSource.file] reads from a local path.
 /// * [UploadSource.bytes] uploads an in-memory buffer.
 /// * [UploadSource.stream] uploads from a stream factory. The factory is
 ///   called again on every retry, so it must return a fresh stream.

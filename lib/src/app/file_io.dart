@@ -1,15 +1,13 @@
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
 import 'package:upcloud/ui.dart';
 
 /// Lets the user pick one or more files and converts them to
 /// [UploadSource]s.
 ///
-/// * Native platforms upload from the file path, so large files are not
-///   loaded in memory.
-/// * Web has no paths: the bytes are read in memory.
+/// Files are uploaded from their path, or streamed when they have none,
+/// so large files are not loaded in memory.
 Future<List<UploadSource>> pickUploadSources() async {
   final files = await FilePicker.pickFiles();
   return [for (final file in files) await _toSource(file)];
@@ -40,7 +38,7 @@ Future<String?> openBackupFile() async {
 }
 
 Future<UploadSource> _toSource(PlatformFile file) async {
-  final path = kIsWeb ? null : file.path;
+  final path = file.path;
   if (path != null) {
     return UploadSource.file(
       path,
@@ -49,7 +47,7 @@ Future<UploadSource> _toSource(PlatformFile file) async {
     );
   }
   final length = file.lengthSync() ?? await file.length();
-  if (!kIsWeb && length != null) {
+  if (length != null) {
     // Content URIs (e.g. Android cloud documents): stream the content.
     return UploadSource.stream(
       file.readAsByteStream,

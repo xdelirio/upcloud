@@ -3,7 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:upcloud/src/controllers/providers_controller.dart';
 import 'package:upcloud/src/l10n/upcloud_localizations.dart';
+import 'package:upcloud/src/widgets/common/busy_button.dart';
 import 'package:upcloud/src/widgets/common/dialogs.dart';
+import 'package:upcloud/src/widgets/common/notice_box.dart';
+import 'package:upcloud/src/widgets/providers/provider_helpers.dart';
 import 'package:upcloud/upcloud.dart';
 
 final _idPattern = RegExp(r'^[a-z0-9][a-z0-9_-]*$');
@@ -26,7 +29,6 @@ class ProviderEditor extends StatefulWidget {
     this.initial,
     this.onSaved,
     this.onReset,
-    this.submitLabel,
     super.key,
   });
 
@@ -42,9 +44,6 @@ class ProviderEditor extends StatefulWidget {
   /// Called after "reset to default". The provider no longer exists when it
   /// was a custom one.
   final VoidCallback? onReset;
-
-  /// Label of the save button. Defaults to "Save".
-  final String? submitLabel;
 
   @override
   State<ProviderEditor> createState() => _ProviderEditorState();
@@ -250,16 +249,10 @@ class _ProviderEditorState extends State<ProviderEditor> {
   Future<void> _reset() async {
     final base = _base;
     if (base == null) return;
-    final l10n = UpCloudLocalizations.of(context);
-    final isCustom = widget.controller.state.isCustom(base.id);
-    final confirmed = await showConfirmDialog(
+    final confirmed = await confirmProviderReset(
       context,
-      title: isCustom ? l10n.delete : l10n.resetToDefault,
-      message: isCustom
-          ? l10n.deleteProviderMessage(base.name)
-          : l10n.resetProviderMessage(base.name),
-      confirmLabel: isCustom ? l10n.delete : l10n.resetToDefault,
-      destructive: true,
+      config: base,
+      isCustom: widget.controller.state.isCustom(base.id),
     );
     if (!confirmed || !mounted) return;
     try {
@@ -376,7 +369,7 @@ class _ProviderEditorState extends State<ProviderEditor> {
             minLines: 1,
             maxLines: 3,
             decoration: InputDecoration(
-              labelText: '${l10n.description} (${l10n.optional})',
+              labelText: l10n.optionalLabel(l10n.description),
             ),
           ),
           const SizedBox(height: 16),
@@ -384,7 +377,7 @@ class _ProviderEditorState extends State<ProviderEditor> {
             fieldKey: const ValueKey('upcloud-provider-website'),
             controller: _website,
             enabled: enabled,
-            label: '${l10n.website} (${l10n.optional})',
+            label: l10n.optionalLabel(l10n.website),
             icon: Icons.public_rounded,
           ),
           section(l10n.connection),
@@ -394,7 +387,7 @@ class _ProviderEditorState extends State<ProviderEditor> {
             enabled: enabled,
             label: (driver?.requiresApiBase ?? true)
                 ? l10n.baseUrl
-                : '${l10n.baseUrl} (${l10n.optional})',
+                : l10n.optionalLabel(l10n.baseUrl),
             icon: Icons.dns_outlined,
             required: driver?.requiresApiBase ?? true,
           ),
@@ -452,7 +445,7 @@ class _ProviderEditorState extends State<ProviderEditor> {
             autocorrect: false,
             keyboardType: TextInputType.url,
             decoration: InputDecoration(
-              labelText: '${l10n.fileUrlTemplate} (${l10n.optional})',
+              labelText: l10n.optionalLabel(l10n.fileUrlTemplate),
               helperText: l10n.fileUrlTemplateHelper,
               helperMaxLines: 2,
               hintText:
@@ -519,10 +512,13 @@ class _ProviderEditorState extends State<ProviderEditor> {
           ),
           if (_problems.isNotEmpty || _error != null) ...[
             const SizedBox(height: 8),
-            _Problems(
-              problems: [
-                for (final problem in _problems) l10n.configProblem(problem),
-                if (_error case final error?) _describeError(l10n, error),
+            NoticeBox(
+              title: l10n.invalidProviderConfig,
+              children: [
+                for (final problem in _problems)
+                  Text('• ${l10n.configProblem(problem)}'),
+                if (_error case final error?)
+                  Text('• ${describeProviderError(l10n, error)}'),
               ],
             ),
           ],
@@ -542,15 +538,11 @@ class _ProviderEditorState extends State<ProviderEditor> {
                   ),
                   label: Text(isCustom ? l10n.delete : l10n.resetToDefault),
                 ),
-              FilledButton.icon(
-                onPressed: enabled ? () => unawaited(_save()) : null,
-                icon: _saving
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.save_rounded),
-                label: Text(widget.submitLabel ?? l10n.save),
+              BusyButton(
+                busy: _saving,
+                icon: Icons.save_rounded,
+                label: l10n.save,
+                onPressed: () => unawaited(_save()),
               ),
             ],
           ),
@@ -634,14 +626,6 @@ class _ProviderEditorState extends State<ProviderEditor> {
   }
 }
 
-String _describeError(UpCloudLocalizations l10n, Object error) =>
-    switch (error) {
-      InvalidProviderConfigException(:final problems) =>
-        problems.map(l10n.configProblem).join('\n'),
-      UpCloudException() => l10n.errorMessage(error),
-      _ => '$error',
-    };
-
 class _UrlField extends StatelessWidget {
   const _UrlField({
     required this.fieldKey,
@@ -718,42 +702,6 @@ class _Summary extends StatelessWidget {
             kind: ProviderBadgeKind.modified,
           ),
       ],
-    );
-  }
-}
-
-class _Problems extends StatelessWidget {
-  const _Problems({required this.problems});
-
-  final List<String> problems;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = UpCloudLocalizations.of(context);
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final style = theme.textTheme.bodySmall?.copyWith(
-      color: scheme.onErrorContainer,
-    );
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: scheme.errorContainer,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            l10n.invalidProviderConfig,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: scheme.onErrorContainer,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          for (final problem in problems) Text('• $problem', style: style),
-        ],
-      ),
     );
   }
 }

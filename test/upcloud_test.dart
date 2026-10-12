@@ -1,8 +1,19 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:upcloud/testing.dart';
 import 'package:upcloud/upcloud.dart';
+
+import 'support/testing.dart';
+
+/// A store whose writes fail, like a full or locked disk.
+final class _FailingAccountStore implements AccountStore {
+  @override
+  Future<List<CloudAccount>> load() async => const [];
+
+  @override
+  Future<void> save(List<CloudAccount> accounts) async =>
+      throw StateError('disk full');
+}
 
 void main() {
   late UpCloud upcloud;
@@ -115,6 +126,21 @@ void main() {
     );
   });
 
+  test('keeps the connections of providers that did not change', () async {
+    final account = await upcloud.addAccount(
+      providerId: 'streamhg',
+      credentials: Credentials.apiKey('key'),
+      verify: false,
+    );
+    final before = upcloud.connect(account.id);
+
+    final changes = upcloud.providerChanges.first;
+    await upcloud.registry.setEnabled('byse', enabled: false);
+    await changes;
+
+    expect(upcloud.connect(account.id), same(before));
+  });
+
   test('disabled registry providers are not available', () async {
     await upcloud.registry.setEnabled('byse', enabled: false);
     expect(upcloud.provider('byse'), isNull);
@@ -190,9 +216,38 @@ void main() {
     final first = upcloud.connect(account.id);
     expect(upcloud.connect(account.id), same(first));
 
-    await upcloud.updateAccount(account.copyWith(label: 'Renamed'));
-    expect(upcloud.connect(account.id), isNot(same(first)));
+    // A new name keeps the connection; new credentials replace it.
+    final renamed = account.copyWith(label: 'Renamed');
+    await upcloud.updateAccount(renamed);
+    expect(upcloud.connect(account.id), same(first));
     expect(upcloud.account(account.id)?.label, 'Renamed');
+
+    await upcloud.updateAccount(
+      renamed.copyWith(credentials: Credentials.apiKey('other')),
+    );
+    expect(upcloud.connect(account.id), isNot(same(first)));
+  });
+
+  test('an account that could not be saved is not kept', () async {
+    final failing = _FailingAccountStore();
+    final other = create(accounts: failing);
+    addTearDown(other.dispose);
+    await other.init();
+    final emitted = <List<CloudAccount>>[];
+    other.accountChanges.listen(emitted.add);
+
+    await expectLater(
+      other.addAccount(
+        providerId: 'demo',
+        credentials: Credentials.apiKey('key'),
+        verify: false,
+      ),
+      throwsStateError,
+    );
+    await pumpEventQueue();
+
+    expect(other.accounts, isEmpty);
+    expect(emitted.last, isEmpty);
   });
 
   test('applies the per account max file size override', () async {

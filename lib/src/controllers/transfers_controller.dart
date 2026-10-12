@@ -17,9 +17,14 @@ import 'package:upcloud/upcloud.dart';
 class TransfersController extends ChangeNotifier {
   /// Creates a controller for [manager].
   ///
-  /// [clock] is used to measure speeds; override it in tests.
-  TransfersController(this.manager, {DateTime Function()? clock})
-    : _clock = clock ?? DateTime.now {
+  /// Progress updates are published at most once per [progressInterval],
+  /// whatever the number of running tasks. [clock] is used to measure
+  /// speeds; override it in tests.
+  TransfersController(
+    this.manager, {
+    this.progressInterval = const Duration(milliseconds: 100),
+    DateTime Function()? clock,
+  }) : _clock = clock ?? DateTime.now {
     _managerSubscription = manager.changes.listen(_sync);
     _sync(manager.tasks);
   }
@@ -31,10 +36,16 @@ class TransfersController extends ChangeNotifier {
   /// The wrapped manager.
   final TransferManager manager;
 
+  /// Minimum time between two progress updates.
+  final Duration progressInterval;
+
   final DateTime Function() _clock;
   late final StreamSubscription<List<UploadTask>> _managerSubscription;
   final _taskSubscriptions = <UploadTask, StreamSubscription<void>>{};
   final _speeds = <UploadTask, _SpeedMeter>{};
+
+  /// Publishes the progress of every running task at once.
+  Timer? _progressTimer;
   var _state = const TransfersState();
   var _disposed = false;
 
@@ -102,7 +113,19 @@ class TransfersController extends ChangeNotifier {
   void _onTaskState(UploadTask task, TransferState state) {
     if (_disposed) return;
     if (state case TransferRunning(:final progress)) {
-      (_speeds[task] ??= _SpeedMeter()).add(progress.transferred, _clock());
+      final meter = _speeds[task];
+      (meter ?? (_speeds[task] = _SpeedMeter())).add(
+        progress.transferred,
+        _clock(),
+      );
+      if (meter != null) {
+        // Only progress changed: wait for the other running tasks.
+        _progressTimer ??= Timer(
+          progressInterval,
+          () => _publish(manager.tasks),
+        );
+        return;
+      }
     } else {
       _speeds.remove(task);
     }
@@ -110,6 +133,9 @@ class TransfersController extends ChangeNotifier {
   }
 
   void _publish(List<UploadTask> tasks) {
+    _progressTimer?.cancel();
+    _progressTimer = null;
+    if (_disposed) return;
     _state = TransfersState(
       entries: List.unmodifiable([
         for (final task in tasks)
@@ -129,6 +155,7 @@ class TransfersController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _progressTimer?.cancel();
     unawaited(_managerSubscription.cancel());
     for (final subscription in _taskSubscriptions.values) {
       unawaited(subscription.cancel());
@@ -149,8 +176,10 @@ class _SpeedMeter {
   void add(int bytes, DateTime now) {
     final lastTime = _lastTime;
     if (lastTime == null || bytes < _lastBytes) {
+      // First sample, or a new attempt: the old speed no longer applies.
       _lastTime = now;
       _lastBytes = bytes;
+      bytesPerSecond = null;
       return;
     }
     final elapsed = now.difference(lastTime);

@@ -5,8 +5,13 @@ import 'package:upcloud/src/core/cancellation.dart';
 import 'package:upcloud/src/core/errors.dart';
 import 'package:upcloud/src/core/models/upload.dart';
 import 'package:upcloud/src/core/models/upload_request.dart';
-import 'package:upcloud/src/testing/in_memory_provider.dart';
 import 'package:upcloud/src/transfer/upload_executor.dart';
+
+import 'in_memory_provider.dart';
+
+import 'in_memory_provider.dart' show InMemoryProvider;
+
+import 'testing.dart' show InMemoryProvider;
 
 /// Answers an upload request, or returns `null` to use the default answer.
 typedef FakeUploadResponder = UploadResponse? Function(
