@@ -1,6 +1,0 @@
-# integration_test/live_upload_test.dart calls a real provider API. It is
-# skipped (and its app never launched) unless run on its own with
-# `--run-skipped`; see "Live tests" in CONTRIBUTING.md.
-tags:
-  live:
-    skip: "Live test: run it on its own with --run-skipped (see CONTRIBUTING.md)"

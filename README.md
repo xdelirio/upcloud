@@ -1,13 +1,17 @@
 # upcloud
 
-Browse and upload files across many cloud and video hosting
-providers from Dart and Flutter.
+A multi-cloud upload manager built with Flutter: browse and upload files
+across many cloud and video hosting providers from one app (Android, iOS
+and macOS).
 
-| Package | Description |
-| --- | --- |
-| [`upcloud`](packages/upcloud) | Pure Dart core: drivers, provider registry, transfers, accounts, encrypted backups. |
-| [`upcloud_flutter`](packages/upcloud_flutter) | Flutter widgets and `ChangeNotifier` controllers: background uploads, batch upload composer, upload settings, backups, file browser, transfer queue, account and provider management. |
-| [`example`](packages/upcloud_flutter/example) | A complete multi-provider file manager built with both packages. |
+- Background uploads with system notifications, retries and a transfer
+  queue.
+- Batch uploads: several files to several accounts, into one folder path
+  that each account finds or creates by name.
+- Remote uploads (by URL) where the provider supports them.
+- Account and provider management, upload settings and encrypted backups
+  of the whole configuration.
+- English and Spanish.
 
 ## How it works
 
@@ -22,36 +26,45 @@ registry/providers.json ──► ProviderRegistry ──► ProviderDefinition 
 - **Drivers** implement an API once. The `xvs` driver covers every host
   running the XVideoSharing script.
 - **Providers** are entries of [`registry/providers.json`](registry/providers.json).
-  Apps download it, so a domain change or a new host does not need a
-  package release.
+  The app downloads it, so a domain change or a new host does not need an
+  app release.
 - Users can edit providers (domains, mirrors, file links, limits) and add
   their own, based on any available driver.
 
 ## Repository layout
 
 ```
-packages/upcloud/            Dart core
-packages/upcloud_flutter/    Flutter UI (+ example app)
+lib/main.dart                App entry point
+lib/src/app/                 Screens, navigation, app settings
+lib/src/widgets/             Reusable widgets (browser, composer, transfers...)
+lib/src/controllers/         ChangeNotifier controllers
+lib/src/uploads/             Background upload executor and notifications
+lib/src/drivers/             Provider APIs: xvs, byse, mediafire
+lib/src/registry/            Provider registry (bundled, remote, user edits)
+lib/src/transfer/            Transfer manager and batches
+lib/src/{accounts,backup,core,settings}/
+lib/upcloud.dart             Barrel of the core (no Flutter imports)
+lib/ui.dart                  Barrel of the core plus widgets and controllers
 registry/providers.json      Provider registry (source of truth)
 registry/providers.schema.json
-tool/gen.sh                  build_runner for a package
-tool/sync_registry.dart      Bundles the registry into packages/upcloud
+tool/gen.sh                  build_runner (freezed/json_serializable)
+tool/sync_registry.dart      Bundles the registry into the app
 ```
 
 ## Development
 
 ```sh
-dart pub get                       # resolves the whole workspace
-tool/gen.sh upcloud                # code generation (freezed/json)
-tool/gen.sh upcloud_flutter
-(cd packages/upcloud && dart test)
-(cd packages/upcloud && dart test -P live)   # real APIs, see CONTRIBUTING.md
-(cd packages/upcloud_flutter && flutter test)
-(cd packages/upcloud_flutter/example && flutter test integration_test -d macos)
-(cd packages/upcloud_flutter/example && flutter run)
+flutter pub get
+tool/gen.sh                              # code generation (freezed/json)
+flutter analyze
+flutter test
+flutter test integration_test -d macos
+flutter run
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) to add providers or drivers.
+Live tests against the real APIs are described in
+[CONTRIBUTING.md](CONTRIBUTING.md), which also explains how to add
+providers or drivers.
 
 ## License
 

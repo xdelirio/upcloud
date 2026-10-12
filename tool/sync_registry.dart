@@ -1,4 +1,4 @@
-// Copies registry/providers.json into the package as the bundled registry.
+// Copies registry/providers.json into the app as the bundled registry.
 //
 // Run from the repository root after editing the registry:
 //
@@ -7,7 +7,7 @@ import 'dart:convert';
 import 'dart:io';
 
 const _source = 'registry/providers.json';
-const _target = 'packages/upcloud/lib/src/registry/bundled_registry_data.dart';
+const _target = 'lib/src/registry/bundled_registry_data.dart';
 
 void main() {
   final json = File(_source).readAsStringSync();
